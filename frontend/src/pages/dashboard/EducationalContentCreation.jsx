@@ -368,7 +368,7 @@ const EducationalContentCreation = () => {
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${contentType === 'article'
                                 ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                            }`}
+                                }`}
                         >
                             <BookOpen className="w-4 h-4 inline mr-2" />
                             Article
@@ -378,7 +378,7 @@ const EducationalContentCreation = () => {
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${contentType === 'quiz'
                                 ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                            }`}
+                                }`}
                         >
                             <HelpCircle className="w-4 h-4 inline mr-2" />
                             Quiz
