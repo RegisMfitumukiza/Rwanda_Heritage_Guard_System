@@ -24,8 +24,16 @@ export const useGet = (url, params = {}, options = {}) => {
             console.log('🔍 useGet: Making request to:', url, 'with params:', params);
             const result = await httpClient.get(url, params);
             console.log('🔍 useGet: Received result:', result);
-            setData(result);
-            if (options.onSuccess) options.onSuccess(result);
+
+            // Only set data if we actually received something
+            if (result !== null && result !== undefined) {
+                console.log('🔍 useGet: Setting data to:', result);
+                setData(result);
+                if (options.onSuccess) options.onSuccess(result);
+            } else {
+                console.warn('🔍 useGet: Received null/undefined result, not setting data');
+                setData(null);
+            }
         } catch (err) {
             console.error(`Failed to fetch data from ${url}:`, err);
             setError(err);
@@ -66,7 +74,7 @@ export const useGet = (url, params = {}, options = {}) => {
         if (options.enabled !== false) {
             fetchData();
         }
-    }, [fetchData]);
+    }, [options.enabled, url, JSON.stringify(params)]);
 
     return { data, loading, error, refetch, refetchWithParams };
 };

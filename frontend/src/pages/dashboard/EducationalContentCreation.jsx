@@ -32,26 +32,33 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-// Schemas for form validation
+// Updated schema to match backend DTO exactly
 const articleSchema = z.object({
-    titleEn: z.string().min(1, 'English title is required'),
-    titleRw: z.string().optional(),
-    titleFr: z.string().optional(),
-    contentEn: z.string().min(10, 'English content must be at least 10 characters'),
-    contentRw: z.string().optional(),
-    contentFr: z.string().optional(),
-    summaryEn: z.string().min(1, 'Summary is required'),
-    summaryRw: z.string().optional(),
-    summaryFr: z.string().optional(),
-    category: z.string().min(1, 'Category is required'),
-    difficultyLevel: z.string().min(1, 'Difficulty level is required'),
-    estimatedReadTimeMinutes: z.number().min(1).max(480).default(15),
-    tags: z.array(z.string()).optional(),
+    titleEn: z.string().min(1, 'Title in English is required').max(500, 'Title cannot exceed 500 characters'),
+    titleRw: z.string().max(500, 'Title cannot exceed 500 characters').optional(),
+    titleFr: z.string().max(500, 'Title cannot exceed 500 characters').optional(),
+    contentEn: z.string().min(10, 'Content must be at least 10 characters').max(10000, 'Content cannot exceed 10000 characters'),
+    contentRw: z.string().max(10000, 'Content cannot exceed 10000 characters').optional(),
+    contentFr: z.string().max(10000, 'Content cannot exceed 10000 characters').optional(),
+    summaryEn: z.string().min(1, 'Summary is required').max(1000, 'Summary cannot exceed 1000 characters'),
+    summaryRw: z.string().max(1000, 'Summary cannot exceed 1000 characters').optional(),
+    summaryFr: z.string().max(1000, 'Summary cannot exceed 1000 characters').optional(),
+    category: z.string().min(1, 'Category is required').regex(
+        /^(HERITAGE_SITES|TRADITIONAL_CRAFTS|CULTURAL_PRACTICES|HISTORICAL_EVENTS|ROYAL_HISTORY|TRADITIONAL_MUSIC|ARCHITECTURE|CUSTOMS_TRADITIONS|GENERAL_EDUCATION)$/,
+        'Invalid category. Must be one of: HERITAGE_SITES, TRADITIONAL_CRAFTS, CULTURAL_PRACTICES, HISTORICAL_EVENTS, ROYAL_HISTORY, TRADITIONAL_MUSIC, ARCHITECTURE, CUSTOMS_TRADITIONS, GENERAL_EDUCATION'
+    ),
+    difficultyLevel: z.string().min(1, 'Difficulty level is required').regex(
+        /^(BEGINNER|INTERMEDIATE|ADVANCED)$/,
+        'Invalid difficulty level. Must be one of: BEGINNER, INTERMEDIATE, ADVANCED'
+    ),
+    estimatedReadTimeMinutes: z.number().min(1, 'Estimated read time must be at least 1 minute').max(480, 'Estimated read time cannot exceed 480 minutes'),
+    tags: z.array(z.string().max(50, 'Tag cannot exceed 50 characters')).max(10, 'Cannot have more than 10 tags').optional(),
     isPublic: z.boolean().default(true),
+    isActive: z.boolean().default(true),
     featuredImage: z.string().optional(),
     youtubeVideoUrl: z.string().optional(),
-    relatedArtifactId: z.number().optional(),
-    relatedHeritageSiteId: z.number().optional()
+    relatedArtifactId: z.union([z.number().positive(), z.undefined(), z.null(), z.string().length(0)]).optional(),
+    relatedHeritageSiteId: z.union([z.number().positive(), z.undefined(), z.null(), z.string().length(0)]).optional()
 });
 
 const quizSchema = z.object({
@@ -103,10 +110,92 @@ const EducationalContentCreation = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingArticle, setEditingArticle] = useState(null);
 
-    // Add state for dynamic metadata
-    const [categories, setCategories] = useState([]);
-    const [difficultyLevels, setDifficultyLevels] = useState([]);
-    const [metadataLoading, setMetadataLoading] = useState(true);
+    // Multiple question state variables
+    const [questions, setQuestions] = useState([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+    // Multiple question management functions
+    const addQuestion = () => {
+        const newQuestion = {
+            questionTextEn: '',
+            questionTextRw: '',
+            questionTextFr: '',
+            explanationEn: '',
+            explanationRw: '',
+            explanationFr: '',
+            questionType: 'MULTIPLE_CHOICE',
+            points: 1,
+            options: [
+                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false },
+                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false }
+            ]
+        };
+        setQuestions([...questions, newQuestion]);
+        setCurrentQuestionIndex(questions.length);
+        questionForm.reset(newQuestion);
+    };
+
+    const removeQuestionByIndex = (index) => {
+        const updatedQuestions = questions.filter((_, i) => i !== index);
+        setQuestions(updatedQuestions);
+        if (updatedQuestions.length > 0) {
+            setCurrentQuestionIndex(Math.min(currentQuestionIndex, updatedQuestions.length - 1));
+            questionForm.reset(updatedQuestions[Math.min(currentQuestionIndex, updatedQuestions.length - 1)]);
+        } else {
+            questionForm.reset();
+        }
+    };
+
+    const saveCurrentQuestion = () => {
+        const currentQuestionData = questionForm.getValues();
+        if (!currentQuestionData.questionTextEn.trim()) {
+            toast.error('Question text in English is required');
+            return;
+        }
+
+        const updatedQuestions = [...questions];
+        updatedQuestions[currentQuestionIndex] = currentQuestionData;
+        setQuestions(updatedQuestions);
+        toast.success(`Question ${currentQuestionIndex + 1} saved!`);
+    };
+
+    const selectQuestion = (index) => {
+        setCurrentQuestionIndex(index);
+        questionForm.reset(questions[index]);
+    };
+
+    // Constants - Use correct backend enum values
+    const categories = [
+        'HERITAGE_SITES', 'TRADITIONAL_CRAFTS', 'CULTURAL_PRACTICES',
+        'HISTORICAL_EVENTS', 'ROYAL_HISTORY', 'TRADITIONAL_MUSIC',
+        'ARCHITECTURE', 'CUSTOMS_TRADITIONS', 'GENERAL_EDUCATION'
+    ];
+    const difficultyLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
+
+    // Helper functions to convert enum values to user-friendly names
+    const getCategoryDisplayName = (category) => {
+        const displayNames = {
+            'HERITAGE_SITES': 'Heritage Sites',
+            'TRADITIONAL_CRAFTS': 'Traditional Crafts',
+            'CULTURAL_PRACTICES': 'Cultural Practices',
+            'HISTORICAL_EVENTS': 'Historical Events',
+            'ROYAL_HISTORY': 'Royal History',
+            'TRADITIONAL_MUSIC': 'Traditional Music',
+            'ARCHITECTURE': 'Architecture',
+            'CUSTOMS_TRADITIONS': 'Customs & Traditions',
+            'GENERAL_EDUCATION': 'General Education'
+        };
+        return displayNames[category] || category;
+    };
+
+    const getDifficultyDisplayName = (difficulty) => {
+        const displayNames = {
+            'BEGINNER': 'Beginner',
+            'INTERMEDIATE': 'Intermediate',
+            'ADVANCED': 'Advanced'
+        };
+        return displayNames[difficulty] || difficulty;
+    };
 
     // Detect content type from URL parameters
     useEffect(() => {
@@ -114,36 +203,7 @@ const EducationalContentCreation = () => {
         setContentType(type);
     }, [searchParams]);
 
-    // Fetch metadata (categories and difficulty levels)
-    useEffect(() => {
-        const fetchMetadata = async () => {
-            try {
-                setMetadataLoading(true);
-                const [categoriesResponse, difficultyLevelsResponse] = await Promise.all([
-                    axios.get('/api/education/categories'),
-                    axios.get('/api/education/difficulty-levels')
-                ]);
-
-                setCategories(categoriesResponse.data);
-                setDifficultyLevels(difficultyLevelsResponse.data);
-            } catch (error) {
-                console.error('Failed to fetch metadata:', error);
-                // Fallback to hardcoded values if API fails
-                setCategories([
-                    'HERITAGE_SITES', 'TRADITIONAL_CRAFTS', 'CULTURAL_PRACTICES',
-                    'HISTORICAL_EVENTS', 'ROYAL_HISTORY', 'TRADITIONAL_MUSIC',
-                    'ARCHITECTURE', 'CUSTOMS_TRADITIONS', 'GENERAL_EDUCATION'
-                ]);
-                setDifficultyLevels(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
-            } finally {
-                setMetadataLoading(false);
-            }
-        };
-
-        fetchMetadata();
-    }, []);
-
-    // Form hooks
+    // Form hooks - Updated to match backend DTO structure exactly
     const articleForm = useForm({
         resolver: zodResolver(articleSchema),
         defaultValues: {
@@ -161,6 +221,7 @@ const EducationalContentCreation = () => {
             estimatedReadTimeMinutes: 15,
             tags: [],
             isPublic: true,
+            isActive: true,
             featuredImage: '',
             youtubeVideoUrl: '',
             relatedArtifactId: undefined,
@@ -234,15 +295,44 @@ const EducationalContentCreation = () => {
         onError: (error) => console.error('Failed to load articles:', error)
     });
 
-    // Article creation handler
+    // Article creation handler - FIXED to send correct data structure
     const handleArticleSubmit = async (data) => {
         try {
             setIsSubmitting(true);
-            const processedData = {
-                ...data,
-                tags: data.tags || []
+
+            // Force form validation
+            const isValid = await articleForm.trigger();
+            if (!isValid) {
+                console.log('Form validation failed:', articleForm.formState.errors);
+                toast.error('Please fix validation errors before submitting');
+                return;
+            }
+
+            // Transform data to match backend DTO exactly
+            const transformedData = {
+                titleEn: data.titleEn,
+                titleRw: data.titleRw || '',
+                titleFr: data.titleFr || '',
+                contentEn: data.contentEn,
+                contentRw: data.contentRw || '',
+                contentFr: data.contentFr || '',
+                summaryEn: data.summaryEn,
+                summaryRw: data.summaryRw || '',
+                summaryFr: data.summaryFr || '',
+                category: data.category,
+                difficultyLevel: data.difficultyLevel,
+                estimatedReadTimeMinutes: data.estimatedReadTimeMinutes,
+                tags: data.tags || [],
+                isPublic: data.isPublic,
+                isActive: data.isActive,
+                featuredImage: data.featuredImage || '',
+                youtubeVideoUrl: data.youtubeVideoUrl || '',
+                relatedArtifactId: data.relatedArtifactId,
+                relatedHeritageSiteId: data.relatedHeritageSiteId
             };
-            await createArticle(processedData);
+
+            console.log('Sending data to backend:', transformedData);
+            await createArticle(transformedData);
             toast.success('Article created successfully!');
             navigate('/dashboard/education/articles');
         } catch (error) {
@@ -314,31 +404,6 @@ const EducationalContentCreation = () => {
             isCorrect: i === index
         }));
         questionForm.setValue('options', updatedOptions);
-    };
-
-    // Helper functions to convert enum values to user-friendly names
-    const getCategoryDisplayName = (category) => {
-        const displayNames = {
-            'HERITAGE_SITES': 'Heritage Sites',
-            'TRADITIONAL_CRAFTS': 'Traditional Crafts',
-            'CULTURAL_PRACTICES': 'Cultural Practices',
-            'HISTORICAL_EVENTS': 'Historical Events',
-            'ROYAL_HISTORY': 'Royal History',
-            'TRADITIONAL_MUSIC': 'Traditional Music',
-            'ARCHITECTURE': 'Architecture',
-            'CUSTOMS_TRADITIONS': 'Customs & Traditions',
-            'GENERAL_EDUCATION': 'General Education'
-        };
-        return displayNames[category] || category;
-    };
-
-    const getDifficultyDisplayName = (difficulty) => {
-        const displayNames = {
-            'BEGINNER': 'Beginner',
-            'INTERMEDIATE': 'Intermediate',
-            'ADVANCED': 'Advanced'
-        };
-        return displayNames[difficulty] || difficulty;
     };
 
     // Articles for quiz creation
@@ -445,6 +510,7 @@ const EducationalContentCreation = () => {
                                                 rows={8}
                                                 {...articleForm.register('contentEn')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('contentEn', e.target.value)}
                                             />
                                             {articleForm.formState.errors.contentEn && (
                                                 <span className="text-red-500 text-sm">{articleForm.formState.errors.contentEn.message}</span>
@@ -458,6 +524,7 @@ const EducationalContentCreation = () => {
                                                 rows={8}
                                                 {...articleForm.register('contentRw')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('contentRw', e.target.value)}
                                             />
                                         </FormGroup>
                                         <FormGroup>
@@ -468,6 +535,7 @@ const EducationalContentCreation = () => {
                                                 rows={8}
                                                 {...articleForm.register('contentFr')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('contentFr', e.target.value)}
                                             />
                                         </FormGroup>
                                     </div>
@@ -485,6 +553,7 @@ const EducationalContentCreation = () => {
                                                 rows={3}
                                                 {...articleForm.register('summaryEn')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('summaryEn', e.target.value)}
                                             />
                                             {articleForm.formState.errors.summaryEn && (
                                                 <span className="text-red-500 text-sm">{articleForm.formState.errors.summaryEn.message}</span>
@@ -498,6 +567,7 @@ const EducationalContentCreation = () => {
                                                 rows={3}
                                                 {...articleForm.register('summaryRw')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('summaryRw', e.target.value)}
                                             />
                                         </FormGroup>
                                         <FormGroup>
@@ -508,6 +578,7 @@ const EducationalContentCreation = () => {
                                                 rows={3}
                                                 {...articleForm.register('summaryFr')}
                                                 className="w-full"
+                                                onChange={(e) => articleForm.setValue('summaryFr', e.target.value)}
                                             />
                                         </FormGroup>
                                     </div>
@@ -520,11 +591,8 @@ const EducationalContentCreation = () => {
                                         <select
                                             {...articleForm.register('category')}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            disabled={metadataLoading}
                                         >
-                                            <option value="">
-                                                {metadataLoading ? 'Loading categories...' : 'Select a category'}
-                                            </option>
+                                            <option value="">Select a category</option>
                                             {categories.map(cat => (
                                                 <option key={cat} value={cat}>
                                                     {getCategoryDisplayName(cat)}
@@ -541,11 +609,8 @@ const EducationalContentCreation = () => {
                                         <select
                                             {...articleForm.register('difficultyLevel')}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            disabled={metadataLoading}
                                         >
-                                            <option value="">
-                                                {metadataLoading ? 'Loading difficulty levels...' : 'Select difficulty level'}
-                                            </option>
+                                            <option value="">Select difficulty level</option>
                                             {difficultyLevels.map(level => (
                                                 <option key={level} value={level}>
                                                     {getDifficultyDisplayName(level)}
@@ -703,6 +768,57 @@ const EducationalContentCreation = () => {
                                         <ArrowLeft className="w-4 h-4 mr-2" />
                                         Back to Articles
                                     </MobileButton>
+
+                                    {/* Test Button for Debugging */}
+                                    <MobileButton
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            console.log('🧪 Testing basic API connectivity...');
+                                            // Test basic GET request
+                                            axios.get('/api/education/articles')
+                                                .then(response => {
+                                                    console.log('✅ GET request successful:', response.data);
+                                                    toast.success('API connectivity test successful!');
+                                                })
+                                                .catch(error => {
+                                                    console.error('❌ GET request failed:', error);
+                                                    toast.error('API connectivity test failed');
+                                                });
+                                        }}
+                                        className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                    >
+                                        🧪 Test API
+                                    </MobileButton>
+
+                                    {/* Test Form Submission */}
+                                    <MobileButton
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            console.log('🧪 Testing form submission manually...');
+                                            console.log('📝 Form values:', articleForm.getValues());
+                                            console.log('🔍 Form errors:', articleForm.formState.errors);
+                                            console.log('🔍 Form is valid:', articleForm.formState.isValid);
+
+                                            // Try to manually call the submit handler
+                                            const testData = {
+                                                titleEn: 'Test Title',
+                                                contentEn: 'Test content with more than 10 characters',
+                                                summaryEn: 'Test summary',
+                                                category: 'CULTURAL_PRACTICES',
+                                                difficultyLevel: 'BEGINNER',
+                                                estimatedReadTimeMinutes: 5
+                                            };
+
+                                            console.log('🧪 Manually calling handleArticleSubmit with test data...');
+                                            handleArticleSubmit(testData);
+                                        }}
+                                        className="bg-green-500 hover:bg-green-600 text-white"
+                                    >
+                                        🧪 Test Form Submit
+                                    </MobileButton>
+
                                     <MobileButton
                                         type="submit"
                                         disabled={isSubmitting}
@@ -1006,6 +1122,26 @@ const EducationalContentCreation = () => {
                                             </FormGroup>
                                         </div>
                                     </div>
+
+                                    {/* Quiz Form Actions */}
+                                    <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                                        <MobileButton
+                                            variant="outline"
+                                            onClick={() => navigate('/dashboard/education/quizzes')}
+                                            className="sm:mr-auto"
+                                        >
+                                            <ArrowLeft className="w-4 h-4 mr-2" />
+                                            Back to Quizzes
+                                        </MobileButton>
+                                        <MobileButton
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            <Save className="w-4 h-4 mr-2" />
+                                            {isSubmitting ? 'Creating...' : 'Create Quiz'}
+                                        </MobileButton>
+                                    </div>
                                 </form>
                             </MobileCardContent>
                         </MobileCard>
@@ -1183,26 +1319,6 @@ const EducationalContentCreation = () => {
                                                 />
                                             </FormGroup>
                                         </div>
-                                    </div>
-
-                                    {/* Quiz Creation Actions */}
-                                    <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
-                                        <MobileButton
-                                            variant="outline"
-                                            onClick={() => navigate('/dashboard/education/quizzes')}
-                                            className="sm:mr-auto"
-                                        >
-                                            <ArrowLeft className="w-4 h-4 mr-2" />
-                                            Back to Quizzes
-                                        </MobileButton>
-                                        <MobileButton
-                                            onClick={quizForm.handleSubmit(handleQuizSubmit)}
-                                            disabled={isSubmitting}
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            <Save className="w-4 h-4 mr-2" />
-                                            {isSubmitting ? 'Creating...' : 'Create Quiz'}
-                                        </MobileButton>
                                     </div>
                                 </div>
                             </MobileCardContent>

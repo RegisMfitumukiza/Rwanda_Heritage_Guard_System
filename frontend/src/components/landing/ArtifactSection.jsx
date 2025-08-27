@@ -240,6 +240,26 @@ const ArtifactSection = ({
         }
     };
 
+    // Fetch featured artifacts for landing page showcase
+    const {
+        data: featuredArtifactsData,
+        loading: artifactsLoading,
+        error: artifactsError
+    } = useGet('/api/artifacts/featured', {
+        limit: 6,
+        includeHeritageSite: true,
+        includeMedia: true,
+        includeAuthentications: true
+    }, {
+        onSuccess: (data) => console.log('Featured artifacts loaded:', data),
+        onError: (error) => console.error('Failed to load featured artifacts:', error)
+    });
+
+    // Handle artifact card click
+    const handleArtifactClick = (artifact) => {
+        navigate(`/artifacts/${artifact.id}`);
+    };
+
     return (
         <section className={className}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -27,6 +27,7 @@ const ENDPOINTS = {
     ARTIFACT_STATS_PERIOD: '/api/artifacts/statistics/period',
     ARTIFACT_STATS_CONDITION: '/api/artifacts/statistics/condition',
     ARTIFACT_STATS_ACQUISITION: '/api/artifacts/statistics/acquisition-method',
+    ARTIFACT_FEATURED: '/api/artifacts/featured',
 
     // Artifact media endpoints
     ARTIFACT_MEDIA: '/api/artifacts/{artifactId}/media',
@@ -386,6 +387,35 @@ export const artifactsApi = {
         const { config = {} } = options;
 
         return httpClient.get(ENDPOINTS.ARTIFACT_STATS_ACQUISITION, {}, config);
+    },
+
+    /**
+     * Get featured artifacts for landing page display
+     * @param {Object} options - Request options
+     * @param {number} options.limit - Number of artifacts to return (default: 6)
+     * @param {boolean} options.includeHeritageSite - Include heritage site details (default: true)
+     * @param {boolean} options.includeMedia - Include media details (default: true)
+     * @param {boolean} options.includeAuthentications - Include authentication details (default: false)
+     * @param {Object} options.config - Additional axios config
+     * @returns {Promise<Array<Artifact>>} Array of featured artifacts
+     */
+    getFeaturedArtifacts: async (options = {}) => {
+        const {
+            limit = 6,
+            includeHeritageSite = true,
+            includeMedia = true,
+            includeAuthentications = false,
+            config = {}
+        } = options;
+
+        const params = {
+            limit,
+            includeHeritageSite,
+            includeMedia,
+            includeAuthentications
+        };
+
+        return httpClient.get(ENDPOINTS.ARTIFACT_FEATURED, params, config);
     },
 
     // ==========================================

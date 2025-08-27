@@ -245,13 +245,8 @@ class HttpClient {
                 }
             }
 
-            // Don't send Authorization header for public endpoints
-            if (!isPublicEndpoint(url)) {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
-                }
-            }
+            // Authorization header is now handled by axios interceptor in config/axios.js
+            // No need to duplicate the logic here
 
             // Create promise for this request
             const requestPromise = retry(() => {
@@ -265,6 +260,9 @@ class HttpClient {
                 console.log('🔍 httpClient.get: Axios response received:', response);
                 const result = processResponse(response);
                 console.log('🔍 httpClient.get: Processed result:', result);
+                console.log('🔍 httpClient.get: Result type:', typeof result);
+                console.log('🔍 httpClient.get: Result is null?', result === null);
+                console.log('🔍 httpClient.get: Result is undefined?', result === undefined);
 
                 // Cache result for public endpoints
                 if (isPublicEndpoint(url)) {

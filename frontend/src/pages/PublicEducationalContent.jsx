@@ -274,7 +274,7 @@ const PublicEducationalContent = () => {
                                     {/* Article Info */}
                                     <div className="flex-1">
                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                                            {article.titleEn || `Article ${article.id}`}
+                                            {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
                                         </h3>
 
                                         <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3">

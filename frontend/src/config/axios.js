@@ -119,6 +119,8 @@ axios.interceptors.request.use(
             }
         } else {
             console.log('🔍 Axios interceptor: Skipping Authorization header for public endpoint:', config.url);
+            // Also log the full config to debug
+            console.log('🔍 Axios interceptor: Full config:', config);
         }
 
         return config;

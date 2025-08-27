@@ -193,6 +193,17 @@ public class ArtifactService {
         return artifactRepository.countByAuthenticationStatus("AUTHENTICATED");
     }
 
+    // Get featured artifacts for landing page display
+    public List<Artifact> getFeaturedArtifacts(int limit) {
+        List<Artifact> allPublic = artifactRepository.findByIsPublic(true);
+        
+        // Sort by ID (newest first, assuming higher IDs are newer) and limit results
+        return allPublic.stream()
+            .sorted((a1, a2) -> Long.compare(a2.getId(), a1.getId()))
+            .limit(limit)
+            .toList();
+    }
+
     // Permission checking methods
     private boolean canView(Artifact artifact) {
         // Public artifacts can be viewed by anyone

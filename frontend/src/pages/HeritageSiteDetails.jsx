@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,22 +17,41 @@ import {
     Phone,
     Mail,
     Globe,
-    Users
+    Users,
+    ChevronLeft,
+    ChevronRight,
+    X,
+    Map
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import { Modal } from '../components/ui/Modal';
+import { LazyImage } from '../components/ui/LazyImage';
 import { useGet } from '../hooks/useSimpleApi';
 import { useLanguage } from '../contexts/LanguageContext';
-import museum from '../assets/Ethnographic-Museum.jpg';
-import kandt from '../assets/richardkandt.jpg';
+import { useAuth } from '../contexts/AuthContext';
+// Map functionality - using Google Maps integration instead of Leaflet
+// If you want to use Leaflet, install: npm install leaflet react-leaflet
+// Then uncomment the imports below:
+// import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+// import L from 'leaflet';
+// import 'leaflet/dist/leaflet.css';
+//
+// CURRENT IMPLEMENTATION: Uses Google Maps integration for external navigation
+// and displays coordinates in a user-friendly format within the modal.
 
 const HeritageSiteDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { currentLanguage, changeLanguage, t } = useLanguage();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [isFavorite, setIsFavorite] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [showMapModal, setShowMapModal] = useState(false);
+    const [toast, setToast] = useState({ type: '', message: '' });
 
     // Validate ID parameter - redirect if invalid
     React.useEffect(() => {
@@ -43,19 +62,26 @@ const HeritageSiteDetails = () => {
         }
     }, [id, navigate]);
 
-    // Fetch heritage site details
+    // Fetch heritage site details using enhanced API system (same as SiteDetails.jsx)
     const {
         data: site,
         loading,
-        error
-    } = useGet(`/api/heritage-sites/${id}`, {}, {
+        error,
+        refetch,
+        refetchWithParams
+    } = useGet(`/api/heritage-sites/${id}`, {
+        language: currentLanguage
+    }, {
         enabled: !!id && !id.startsWith('mock-') && !isNaN(Number(id)),
         onSuccess: (data) => {
             console.log('✅ Site details loaded:', data);
             console.log('📊 Site ID:', id);
-            console.log('📊 Site data type:', typeof data);
-            console.log('📊 Data length:', Array.isArray(data) ? data.length : 'Not an array');
-            console.log('📊 Data keys:', data ? Object.keys(data) : 'No data');
+            console.log('📊 Current language:', currentLanguage);
+            console.log('📊 Site name in different languages:', {
+                nameEn: data?.nameEn,
+                nameRw: data?.nameRw,
+                nameFr: data?.nameFr
+            });
         },
         onError: (error) => {
             console.error('❌ Failed to load site details:', error);
@@ -71,20 +97,113 @@ const HeritageSiteDetails = () => {
         }
     });
 
-    // Process site data
+    // Get the appropriate name and description based on current language (same as SiteDetails.jsx)
+    const getLocalizedField = (fieldName) => {
+        const lang = currentLanguage || 'en';
+        return site?.[`${fieldName}${lang === 'en' ? 'En' : lang === 'rw' ? 'Rw' : 'Fr'}`] || site?.[`${fieldName}En`] || t('siteDetails.notAvailable');
+    };
+
+    const siteName = getLocalizedField('name');
+    const siteDescription = getLocalizedField('description');
+    const siteSignificance = getLocalizedField('significance');
+
+    // Handle media/images - check if site has media (same as SiteDetails.jsx)
+    const getMediaUrl = (media) => {
+        // Backend provides filePath, we need to construct the URL
+        if (media.filePath) {
+            // Check if it's already a full URL
+            if (media.filePath.startsWith('http')) {
+                return media.filePath;
+            }
+            // Construct API endpoint for media files
+            return `/api/media/download/${media.id}`;
+        }
+        return '/heritage_placeholder.jpg';
+    };
+
+    // Debug logging for media data
+    console.log('Site data:', site);
+    console.log('Site media:', site?.media);
+
+    const images = site?.media && site.media.length > 0
+        ? site.media
+            .filter(media => {
+                console.log('Filtering media:', media);
+                const isActive = media.isActive;
+                const isPublic = media.isPublic;
+                console.log(`Media ${media.id}: isActive=${isActive}, isPublic=${isPublic}`);
+                return isActive && isPublic;
+            })
+            .map(media => {
+                const url = getMediaUrl(media);
+                console.log(`Media ${media.id} URL: ${url}`);
+                return {
+                    id: media.id,
+                    url: url,
+                    caption: media.description || media.fileName || siteName,
+                    fileName: media.fileName,
+                    fileType: media.fileType,
+                    dateTaken: media.dateTaken,
+                    photographer: media.photographer,
+                    category: media.category
+                };
+            })
+        : [{ url: '/heritage_placeholder.jpg', caption: siteName }];
+
+    console.log('Final images array:', images);
+
+    // Enhanced hero image selection with priority system (same as SiteDetails.jsx)
+    const getHeroImage = (images) => {
+        // Priority 1: Explicitly marked as "hero" or "primary"
+        const heroImage = images.find(img =>
+            img.category === 'hero' ||
+            img.category === 'primary' ||
+            img.isPrimary === true
+        );
+        if (heroImage) {
+            console.log('Hero image found by category/flag:', heroImage.fileName);
+            return heroImage;
+        }
+
+        // Priority 2: First image (excluding documents, preferring photos)
+        const firstImage = images.find(img =>
+            img.fileType?.startsWith('image/') ||
+            img.fileType === 'image' ||
+            img.category === 'photos'
+        );
+        if (firstImage) {
+            console.log('Hero image found by file type (image):', firstImage.fileName);
+            return firstImage;
+        }
+
+        // Priority 3: Any media file (including videos, documents)
+        const anyMedia = images.find(img => img.url !== '/heritage_placeholder.jpg');
+        if (anyMedia) {
+            console.log('Hero image found (any media):', anyMedia.fileName);
+            return anyMedia;
+        }
+
+        // Priority 4: Fallback placeholder
+        console.log('No media found, using placeholder');
+        return { url: '/heritage_placeholder.jpg', caption: t('siteDetails.noImageAvailable') };
+    };
+
+    const heroImage = getHeroImage(images);
+
+    // Process site data for backward compatibility
     const processedSite = site ? {
         id: site.id || site._id || site.siteId,
-        name: site.name || site.title || site.siteName,
-        description: site.description || site.summary || site.content,
+        name: siteName, // Use localized name
+        description: siteDescription, // Use localized description
         category: site.category || site.type || site.siteCategory,
-        location: site.location || site.address || site.region,
-        establishedDate: site.establishedDate || site.foundedDate || site.creationDate,
+        location: site.region && site.address ? `${site.region} - ${site.address}` : site.region || site.address,
+        establishedDate: site.establishmentYear || site.establishedDate || site.foundedDate,
         rating: site.rating || site.score || site.visitorRating,
-        imageUrl: site.imageUrl || site.primaryImage || site.thumbnail,
-        images: site.images || site.gallery || site.photoGallery,
-        coordinates: site.coordinates || site.geoLocation,
+        imageUrl: heroImage.url, // Use hero image
+        images: images, // Use processed media array
+        coordinates: site.gpsLatitude && site.gpsLongitude ? { lat: site.gpsLatitude, lng: site.gpsLongitude } : null,
         contactInfo: site.contactInfo || site.contact,
-        historicalSignificance: site.historicalSignificance || site.significance,
+        historicalSignificance: siteSignificance, // Use localized significance
         visitingHours: site.visitingHours || site.hours,
         admissionFee: site.admissionFee || site.fee,
         facilities: site.facilities || site.amenities,
@@ -93,15 +212,13 @@ const HeritageSiteDetails = () => {
         email: site.email || site.contactEmail
     } : null;
 
-    // No mock data - only use real API data
-
     // Define functions first
     const handleBackClick = () => navigate(-1);
     const handleShare = () => {
         if (navigator.share) {
             navigator.share({
-                title: displaySite?.name || 'Heritage Site',
-                text: displaySite?.description || 'Discover this amazing heritage site',
+                title: processedSite?.name || 'Heritage Site',
+                text: processedSite?.description || 'Discover this amazing heritage site',
                 url: window.location.href
             });
         } else {
@@ -119,10 +236,10 @@ const HeritageSiteDetails = () => {
                 <div className="text-center">
                     <div className="text-red-500 text-6xl mb-4">🏛️</div>
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Site Not Found
+                        {t('siteDetails.siteNotFound')}
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                        The heritage site you're looking for could not be found or is not available.
+                        {t('siteDetails.siteNotFound')} - {t('siteDetails.notAvailable')}
                     </p>
                     <div className="text-sm text-gray-500 dark:text-gray-500 mb-6">
                         <p>Site ID: {id}</p>
@@ -133,10 +250,10 @@ const HeritageSiteDetails = () => {
                     <div className="flex gap-4 justify-center">
                         <Button onClick={handleBackClick} variant="outline">
                             <ArrowLeft className="mr-2" size={16} />
-                            Go Back
+                            {t('siteDetails.goBack')}
                         </Button>
                         <Button onClick={() => navigate('/')}>
-                            Go Home
+                            {t('siteDetails.goHome')}
                         </Button>
                     </div>
                 </div>
@@ -144,12 +261,90 @@ const HeritageSiteDetails = () => {
         );
     }
 
-    const getSiteImage = (site, index = 0) => {
-        if (site.imageUrl) return site.imageUrl;
-        if (site.images && site.images.length > 0) {
-            return site.images[index]?.url || site.images[index];
+    // Image modal functions (same as SiteDetails.jsx)
+    const openImageModal = (index) => {
+        setSelectedImageIndex(index);
+        setShowImageModal(true);
+    };
+
+    const nextImage = () => {
+        setSelectedImageIndex((prev) => (prev + 1) % images.length);
+    };
+
+    const prevImage = () => {
+        setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    };
+
+    // Map functions
+    const openMapModal = () => {
+        setShowMapModal(true);
+    };
+
+    const copyCoordinates = () => {
+        if (site.gpsLatitude && site.gpsLongitude) {
+            navigator.clipboard.writeText(`${site.gpsLatitude}, ${site.gpsLongitude}`);
+            setToast({ type: 'success', message: t('siteDetails.coordinatesCopied') });
         }
-        return index % 2 === 0 ? museum : kandt;
+    };
+
+    const openGoogleMaps = () => {
+        if (site.gpsLatitude && site.gpsLongitude) {
+            const url = `https://www.google.com/maps?q=${site.gpsLatitude},${site.gpsLongitude}`;
+            window.open(url, '_blank');
+        }
+    };
+
+    // Dynamic visiting hours logic
+    const getVisitingHoursStatus = () => {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+        // Check if current time is between 09:00 and 17:00 (9 AM to 5 PM)
+        const isOpenTime = currentHour >= 9 && currentHour < 17;
+
+        // Check if it's a weekday (Monday = 1, Tuesday = 2, ..., Friday = 5)
+        const isWeekday = currentDay >= 1 && currentDay <= 5;
+
+        if (isOpenTime && isWeekday) {
+            return `🟢 ${t('siteDetails.openNow')}`;
+        } else if (isOpenTime && (currentDay === 0 || currentDay === 6)) {
+            return `🟡 ${t('siteDetails.weekendHours')}`;
+        } else {
+            return `🔴 ${t('siteDetails.closed')}`;
+        }
+    };
+
+    const getVisitingHoursDetails = () => {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentDay = now.getDay();
+
+        const isOpenTime = currentHour >= 9 && currentHour < 17;
+        const isWeekday = currentDay >= 1 && currentDay <= 5;
+
+        if (isOpenTime && isWeekday) {
+            return {
+                status: t('siteDetails.openNow'),
+                color: 'text-green-600',
+                bgColor: 'bg-green-100',
+                icon: '🟢'
+            };
+        } else if (isOpenTime && (currentDay === 6)) {
+            return {
+                status: t('siteDetails.weekendHours'),
+                color: 'text-yellow-600',
+                bgColor: 'bg-yellow-100',
+                icon: '🟡'
+            };
+        } else {
+            return {
+                status: t('siteDetails.closed'),
+                color: 'text-red-600',
+                bgColor: 'bg-red-100',
+                icon: '🔴'
+            };
+        }
     };
 
     const getCategoryColor = (category) => {
@@ -163,7 +358,7 @@ const HeritageSiteDetails = () => {
     };
 
     const formatDate = (dateString) => {
-        if (!dateString) return 'Unknown';
+        if (!dateString) return t('siteDetails.unknown');
         try {
             return new Date(dateString).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -171,7 +366,7 @@ const HeritageSiteDetails = () => {
                 day: 'numeric'
             });
         } catch {
-            return 'Unknown';
+            return t('siteDetails.unknown');
         }
     };
 
@@ -180,7 +375,7 @@ const HeritageSiteDetails = () => {
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">Loading site details...</p>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400">{t('siteDetails.loadingSiteDetails')}</p>
                 </div>
             </div>
         );
@@ -192,15 +387,15 @@ const HeritageSiteDetails = () => {
                 <div className="text-center">
                     <div className="text-red-500 text-6xl mb-4">⚠️</div>
                     <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Unable to Load Site Details
+                        {t('siteDetails.unableToLoadSite')}
                     </h2>
                     <div className="flex gap-4 justify-center">
                         <Button onClick={handleBackClick} variant="outline">
                             <ArrowLeft className="mr-2" size={16} />
-                            Go Back
+                            {t('siteDetails.goBack')}
                         </Button>
                         <Button onClick={() => window.location.reload()}>
-                            Try Again
+                            {t('siteDetails.tryAgain')}
                         </Button>
                     </div>
                 </div>
@@ -220,9 +415,35 @@ const HeritageSiteDetails = () => {
                             className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
                         >
                             <ArrowLeft className="mr-2" size={16} />
-                            Back to Sites
+                            {t('siteDetails.backToSites')}
                         </Button>
                         <div className="flex items-center gap-3">
+                            {/* Language Switcher */}
+                            <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('siteDetails.language')}:</span>
+                                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                                    {['en', 'rw', 'fr'].map((lang) => (
+                                        <button
+                                            key={lang}
+                                            onClick={() => {
+                                                console.log('Language switching to:', lang);
+                                                // Update language context
+                                                changeLanguage(lang);
+                                                // Force refetch with new language parameter
+                                                console.log('Refetching with language:', lang);
+                                                refetchWithParams({ language: lang });
+                                            }}
+                                            className={`px-3 py-1 text-sm font-medium transition-colors ${currentLanguage === lang
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            {lang.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <Button
                                 onClick={() => setIsBookmarked(!isBookmarked)}
                                 variant="ghost"
@@ -233,7 +454,7 @@ const HeritageSiteDetails = () => {
                             <Button
                                 onClick={() => setIsFavorite(!isFavorite)}
                                 variant="ghost"
-                                className={`${isFavorite ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'}`}
+                                className={`${isFavorite ? 'text-red-600' : 'text-gray-400'}`}
                             >
                                 <Heart size={20} className={isFavorite ? 'fill-current' : ''} />
                             </Button>
@@ -245,13 +466,13 @@ const HeritageSiteDetails = () => {
                 </div>
             </header>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
                 {/* Hero Section */}
                 <div className="mb-8">
                     <div className="relative h-96 rounded-2xl overflow-hidden shadow-2xl">
-                        <img
-                            src={getSiteImage(displaySite)}
-                            alt={displaySite.name}
+                        <LazyImage
+                            src={heroImage.url}
+                            alt={siteName}
                             className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
@@ -260,35 +481,46 @@ const HeritageSiteDetails = () => {
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(displaySite.category)}`}>
                                     {displaySite.category}
                                 </span>
-                                <div className="flex items-center text-white">
-                                    <Star size={16} className="text-yellow-400 fill-current mr-1" />
-                                    <span className="text-sm font-medium">{displaySite.rating}</span>
-                                </div>
+                                {displaySite.rating && (
+                                    <div className="flex items-center text-white">
+                                        <Star size={16} className="text-yellow-400 fill-current mr-1" />
+                                        <span className="text-sm font-medium">{displaySite.rating}</span>
+                                    </div>
+                                )}
                             </div>
                             <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">
-                                {displaySite.name}
+                                {siteName}
                             </h1>
-                            <div className="flex items-center text-white/90 text-sm">
-                                <MapPin size={16} className="mr-2" />
-                                {displaySite.location}
+                            <div className="flex items-center text-white/90 text-sm space-x-6">
+                                {site.region && site.address && (
+                                    <div className="flex items-center">
+                                        <MapPin size={16} className="mr-2" />
+                                        {site.region} - {site.address}
+                                    </div>
+                                )}
+                                {site.establishmentYear && (
+                                    <div className="flex items-center">
+                                        <Calendar size={16} className="mr-2" />
+                                        Est. {site.establishmentYear}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
                     {/* Left Column - Main Content */}
-                    <div className="lg:col-span-2">
+                    <div className="xl:col-span-2">
                         {/* Tabs */}
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
                             <div className="border-b border-gray-200 dark:border-gray-700">
                                 <nav className="flex space-x-8 px-6">
                                     {[
-                                        { id: 'overview', label: 'Overview', icon: Info },
-                                        { id: 'gallery', label: 'Gallery', icon: Camera },
-                                        { id: 'visiting', label: 'Visiting Info', icon: Navigation },
-                                        { id: 'contact', label: 'Contact', icon: ExternalLink }
+                                        { id: 'overview', label: t('siteDetails.overview'), icon: Info },
+                                        { id: 'gallery', label: t('siteDetails.photoGallery'), icon: Camera },
+                                        { id: 'visiting', label: t('siteDetails.visitingInfo'), icon: Navigation }
                                     ].map((tab) => (
                                         <button
                                             key={tab.id}
@@ -318,20 +550,31 @@ const HeritageSiteDetails = () => {
                                             <div className="space-y-6">
                                                 <div>
                                                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                                                        About This Site
+                                                        {t('siteDetails.aboutThisSite')}
                                                     </h3>
                                                     <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                                                        {displaySite.description}
+                                                        {siteDescription}
                                                     </p>
                                                 </div>
 
-                                                {displaySite.historicalSignificance && (
+                                                {siteSignificance && (
                                                     <div>
                                                         <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                                                            Historical Significance
+                                                            {t('siteDetails.historicalSignificance')}
                                                         </h3>
                                                         <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                                                            {displaySite.historicalSignificance}
+                                                            {siteSignificance}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {site.contactInfo && (
+                                                    <div>
+                                                        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                                            {t('siteDetails.contactInformation')}
+                                                        </h3>
+                                                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                                            {site.contactInfo}
                                                         </p>
                                                     </div>
                                                 )}
@@ -339,20 +582,26 @@ const HeritageSiteDetails = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div>
                                                         <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Established
+                                                            {t('siteDetails.visitingHours')}
                                                         </h4>
                                                         <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                            <Calendar size={16} className="mr-2" />
-                                                            {formatDate(displaySite.establishedDate)}
+                                                            <Clock size={16} className="mr-2" />
+                                                            <span className="font-medium">
+                                                                {getVisitingHoursStatus()}
+                                                            </span>
                                                         </div>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                            09:00 - 17:00, {t('siteDetails.mondayToFriday')} - {t('siteDetails.sunday')}
+                                                        </p>
                                                     </div>
                                                     <div>
                                                         <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Category
+                                                            Contact
                                                         </h4>
-                                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(displaySite.category)}`}>
-                                                            {displaySite.category}
-                                                        </span>
+                                                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                                                            <Phone size={16} className="mr-2" />
+                                                            {site.contactInfo || t('siteDetails.notAvailable')}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -367,21 +616,77 @@ const HeritageSiteDetails = () => {
                                             exit={{ opacity: 0, y: -20 }}
                                             transition={{ duration: 0.3 }}
                                         >
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {displaySite.images && displaySite.images.length > 0 ? (
-                                                    displaySite.images.map((image, index) => (
-                                                        <div key={index} className="aspect-square rounded-lg overflow-hidden">
-                                                            <img
-                                                                src={getSiteImage(displaySite, index)}
-                                                                alt={`${displaySite.name} - Image ${index + 1}`}
-                                                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                                                            />
+                                            <div className="space-y-4">
+                                                {images.length > 0 && images[0].url !== '/heritage_placeholder.jpg' ? (
+                                                    <>
+                                                        {/* Media Stats */}
+                                                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                                                            <span>{images.length} {images.length === 1 ? t('siteDetails.mediaFiles') : t('siteDetails.mediaFilesPlural')}</span>
+                                                            <span>{t('siteDetails.clickToViewFullSize')}</span>
                                                         </div>
-                                                    ))
+
+                                                        {/* Media Grid */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                            {images.map((image, index) => (
+                                                                <div
+                                                                    key={image.id || index}
+                                                                    className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+                                                                    onClick={() => openImageModal(index)}
+                                                                >
+                                                                    <LazyImage
+                                                                        src={image.url}
+                                                                        alt={image.caption || `${siteName} image ${index + 1}`}
+                                                                        className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-110"
+                                                                    />
+
+                                                                    {/* Hover Overlay */}
+                                                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                                                                        <Camera className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+                                                                    </div>
+
+                                                                    {/* Media Info Badge */}
+                                                                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                                                        {image.fileType?.startsWith('image/') ? 'IMG' : 'DOC'}
+                                                                    </div>
+
+                                                                    {/* Hero Image Badge */}
+                                                                    {(image.category === 'hero' || image.category === 'primary') && (
+                                                                        <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded font-medium">
+                                                                            {image.category === 'hero' ? '⭐ HERO' : '🎯 PRIMARY'}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Caption on Hover */}
+                                                                    {image.caption && (
+                                                                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-2 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                                                                            {image.caption}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Media Details */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
+                                                            {images.some(img => img.photographer) && (
+                                                                <div>
+                                                                    <span className="font-medium">{t('siteDetails.photographer')}:</span>
+                                                                    <span className="ml-2">{images.find(img => img.photographer)?.photographer}</span>
+                                                                </div>
+                                                            )}
+                                                            {images.some(img => img.dateTaken) && (
+                                                                <div>
+                                                                    <span className="font-medium">{t('siteDetails.dateTaken')}:</span>
+                                                                    <span className="ml-2">{images.find(img => img.dateTaken)?.dateTaken}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
                                                 ) : (
-                                                    <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
-                                                        <Camera size={48} className="mx-auto mb-4 opacity-50" />
-                                                        <p>No images available for this site</p>
+                                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                                        <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                                                        <p>{t('siteDetails.noPhotosAvailable')}</p>
+                                                        <p className="text-sm mt-2">{t('siteDetails.mediaFilesWillAppearHere')}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -397,30 +702,70 @@ const HeritageSiteDetails = () => {
                                             transition={{ duration: 0.3 }}
                                         >
                                             <div className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Visiting Hours
-                                                        </h4>
-                                                        <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                            <Clock size={16} className="mr-2" />
-                                                            {displaySite.visitingHours || 'Not specified'}
+                                                {/* Current Status */}
+                                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                                                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-lg">
+                                                        {t('siteDetails.currentStatus')}
+                                                    </h4>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className="text-2xl">{getVisitingHoursDetails().icon}</span>
+                                                            <div>
+                                                                <p className={`text-lg font-semibold ${getVisitingHoursDetails().color}`}>
+                                                                    {getVisitingHoursDetails().status}
+                                                                </p>
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                                    {new Date().toLocaleString('en-US', {
+                                                                        weekday: 'long',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                        timeZoneName: 'short'
+                                                                    })}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Admission Fee
-                                                        </h4>
-                                                        <div className="text-gray-600 dark:text-gray-400">
-                                                            {displaySite.admissionFee || 'Not specified'}
+                                                        <div className={`px-4 py-2 rounded-full ${getVisitingHoursDetails().bgColor} ${getVisitingHoursDetails().color} font-medium`}>
+                                                            {getVisitingHoursDetails().status}
                                                         </div>
                                                     </div>
                                                 </div>
 
+                                                {/* Regular Hours */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                                                            {t('siteDetails.regularHours')}
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                                                                <span className="font-medium">{t('siteDetails.mondayToFriday')}</span>
+                                                                <span className="text-gray-600 dark:text-gray-400">09:00 - 17:00</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                                                                <span className="font-medium">{t('siteDetails.saturday')}</span>
+                                                                <span className="text-gray-600 dark:text-gray-400">09:00 - 17:00</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center py-2">
+                                                                <span className="font-medium">{t('siteDetails.sunday')}</span>
+                                                                <span className="text-gray-600 dark:text-gray-400">09:00 - 17:00</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                                                            {t('siteDetails.admissionFee')}
+                                                        </h4>
+                                                        <div className="text-gray-600 dark:text-gray-400">
+                                                            {displaySite.admissionFee || t('siteDetails.free')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Facilities */}
                                                 {displaySite.facilities && (
                                                     <div>
                                                         <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                                                            Facilities & Services
+                                                            {t('siteDetails.facilitiesAndServices')}
                                                         </h4>
                                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                                             {displaySite.facilities.map((facility, index) => (
@@ -436,150 +781,336 @@ const HeritageSiteDetails = () => {
                                         </motion.div>
                                     )}
 
-                                    {activeTab === 'contact' && (
-                                        <motion.div
-                                            key="contact"
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -20 }}
-                                            transition={{ duration: 0.3 }}
-                                        >
-                                            <div className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Contact Information
-                                                        </h4>
-                                                        <div className="space-y-3">
-                                                            {displaySite.phone && (
-                                                                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                    <Phone size={16} className="mr-2" />
-                                                                    {displaySite.phone}
-                                                                </div>
-                                                            )}
-                                                            {displaySite.email && (
-                                                                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                    <Mail size={16} className="mr-2" />
-                                                                    {displaySite.email}
-                                                                </div>
-                                                            )}
-                                                            {displaySite.website && (
-                                                                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                    <Globe size={16} className="mr-2" />
-                                                                    <a
-                                                                        href={displaySite.website}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="text-blue-600 hover:text-blue-800 underline"
-                                                                    >
-                                                                        Visit Website
-                                                                        <ExternalLink size={14} className="ml-1 inline" />
-                                                                    </a>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                            Location
-                                                        </h4>
-                                                        <div className="text-gray-600 dark:text-gray-400">
-                                                            <div className="flex items-start mb-2">
-                                                                <MapPin size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                                                                <span>{displaySite.location}</span>
-                                                            </div>
-                                                            {displaySite.coordinates && (
-                                                                <div className="text-sm text-gray-500 dark:text-gray-500">
-                                                                    Coordinates: {displaySite.coordinates.lat}, {displaySite.coordinates.lng}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
+
                                 </AnimatePresence>
                             </div>
                         </div>
                     </div>
 
                     {/* Right Column - Sidebar */}
-                    <div className="space-y-6">
-                        {/* Quick Actions */}
-                        <Card className="border border-gray-200 dark:border-gray-700">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Quick Actions</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <Button className="w-full" variant="default">
-                                    <Navigation size={16} className="mr-2" />
-                                    Get Directions
-                                </Button>
-                                <Button className="w-full" variant="outline">
-                                    <Calendar size={16} className="mr-2" />
-                                    Plan Visit
-                                </Button>
-                                <Button className="w-full" variant="outline">
-                                    <Users size={16} className="mr-2" />
-                                    Book Tour
-                                </Button>
-                            </CardContent>
-                        </Card>
+                    <div className="space-y-6 w-full xl:w-auto">
+
 
                         {/* Site Information */}
-                        <Card className="border border-gray-200 dark:border-gray-700">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Site Information</CardTitle>
+                        <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+                                    {t('siteDetails.siteInformation')}
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-6">
+                                {/* Category */}
                                 <div>
-                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                        Category
+                                    <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                        {t('siteDetails.category')}:
                                     </h4>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(displaySite.category)}`}>
-                                        {displaySite.category}
+                                    <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getCategoryColor(displaySite.category)}`}>
+                                        {displaySite.category || t('siteDetails.notSpecified')}
                                     </span>
                                 </div>
+
+                                {/* Region */}
                                 <div>
-                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                        Established
+                                    <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                        {t('siteDetails.region')}:
                                     </h4>
-                                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                        {formatDate(displaySite.establishedDate)}
+                                    <p className="text-gray-600 dark:text-gray-400 text-base">
+                                        {site.region || t('siteDetails.notSpecified')}
                                     </p>
                                 </div>
-                                <div>
-                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                        Rating
-                                    </h4>
-                                    <div className="flex items-center">
-                                        <Star size={16} className="text-yellow-400 fill-current mr-1" />
-                                        <span className="text-gray-600 dark:text-gray-400 text-sm">
-                                            {displaySite.rating} / 5.0
-                                        </span>
+
+                                {/* Coordinates */}
+                                {site.gpsLatitude && site.gpsLongitude && (
+                                    <div>
+                                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                            {t('siteDetails.coordinates')}:
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400 text-base font-mono mb-3">
+                                            {site.gpsLatitude}, {site.gpsLongitude}
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={copyCoordinates}
+                                                className="text-xs px-3 py-1.5 h-8 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                            >
+                                                {t('siteDetails.copy')}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={openMapModal}
+                                                className="text-xs px-3 py-1.5 h-8 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                            >
+                                                {t('siteDetails.viewMap')}
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {/* Address */}
+                                {site.address && (
+                                    <div>
+                                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                            {t('siteDetails.address')}:
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed">
+                                            {site.address}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Contact Info */}
+                                {site.contactInfo && (
+                                    <div>
+                                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                            {t('siteDetails.contactInfo')}:
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400 text-base">
+                                            {site.contactInfo}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Established */}
+                                {site.establishmentYear && (
+                                    <div>
+                                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                            {t('siteDetails.established')}:
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400 text-base">
+                                            {site.establishmentYear}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Ownership */}
+                                {site.ownershipType && (
+                                    <div>
+                                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-sm">
+                                            {t('siteDetails.ownership')}:
+                                        </h4>
+                                        <p className="text-gray-600 dark:text-gray-400 text-base">
+                                            {site.ownershipType}
+                                        </p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
                         {/* Visiting Hours */}
-                        <Card className="border border-gray-200 dark:border-gray-700">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Visiting Hours</CardTitle>
+                        <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {t('siteDetails.visitingHours')}
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                    <Clock size={16} className="mr-2" />
-                                    <span className="text-sm">
-                                        {displaySite.visitingHours || 'Not specified'}
-                                    </span>
+                            <CardContent className="space-y-4">
+                                {/* Current Status */}
+                                <div className="text-center">
+                                    <div className={`inline-flex items-center px-3 py-2 rounded-full ${getVisitingHoursDetails().bgColor} ${getVisitingHoursDetails().color} font-medium text-sm`}>
+                                        <span className="mr-2">{getVisitingHoursDetails().icon}</span>
+                                        {getVisitingHoursDetails().status}
+                                    </div>
+                                </div>
+
+                                {/* Hours */}
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-gray-700">
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('siteDetails.monToFri')}</span>
+                                        <span className="text-gray-600 dark:text-gray-400">09:00-17:00</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-gray-700">
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('siteDetails.saturday')}</span>
+                                        <span className="text-gray-600 dark:text-gray-400">09:00-17:00</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">{t('siteDetails.sunday')}</span>
+                                        <span className="text-gray-600 dark:text-gray-400">09:00-17:00</span>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
                 </div>
             </div>
+
+            {/* Toast Notifications */}
+            {toast.message && (
+                <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${toast.type === 'info' ? 'bg-blue-500 text-white' :
+                    toast.type === 'success' ? 'bg-green-500 text-white' :
+                        toast.type === 'error' ? 'bg-red-500 text-white' :
+                            'bg-gray-500 text-white'
+                    }`}>
+                    <div className="flex items-center space-x-2">
+                        <span>{toast.message}</span>
+                        <button
+                            onClick={() => setToast({ type: '', message: '' })}
+                            className="ml-2 text-white hover:text-gray-200"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Gallery Modal */}
+            <Modal
+                isOpen={showImageModal}
+                onClose={() => setShowImageModal(false)}
+                size="xl"
+                className="p-0"
+            >
+                <div className="relative">
+                    {/* Close Button */}
+                    <button
+                        onClick={() => setShowImageModal(false)}
+                        className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                    >
+                        <X size={20} />
+                    </button>
+
+                    {/* Navigation Buttons */}
+                    {images.length > 1 && (
+                        <>
+                            <button
+                                onClick={prevImage}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                            >
+                                <ChevronLeft size={20} />
+                            </button>
+                            <button
+                                onClick={nextImage}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        </>
+                    )}
+
+                    {/* Image */}
+                    <div className="w-full h-[70vh] bg-black flex items-center justify-center">
+                        <LazyImage
+                            src={images[selectedImageIndex]?.url}
+                            alt={images[selectedImageIndex]?.caption || `${siteName} image`}
+                            className="max-w-full max-h-full object-contain"
+                        />
+                    </div>
+
+                    {/* Image Caption */}
+                    {images[selectedImageIndex]?.caption && (
+                        <div className="p-4 bg-white">
+                            <p className="text-center text-gray-700">
+                                {images[selectedImageIndex].caption}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Image Counter */}
+                    {images.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                            {selectedImageIndex + 1} / {images.length}
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
+            {/* Map Modal */}
+            <Modal
+                isOpen={showMapModal}
+                onClose={() => setShowMapModal(false)}
+                size="xl"
+                className="p-0"
+            >
+                <div className="relative">
+                    {/* Close Button */}
+                    <button
+                        onClick={() => setShowMapModal(false)}
+                        className="absolute top-4 right-4 z-10 bg-white bg-opacity-90 text-gray-800 p-2 rounded-full hover:bg-opacity-100 transition-all shadow-lg"
+                    >
+                        <X size={20} />
+                    </button>
+
+                    {/* Map Container */}
+                    <div className="w-full h-[80vh] bg-gray-100">
+                        {site.gpsLatitude && site.gpsLongitude ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-8">
+                                <div className="text-center mb-6">
+                                    <Map size={64} className="mx-auto mb-4 text-blue-600" />
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{siteName}</h3>
+                                    <p className="text-gray-600 mb-4">{site.region} - {site.address}</p>
+                                    <div className="bg-gray-50 p-4 rounded-lg border">
+                                        <p className="text-sm text-gray-500 mb-2">GPS Coordinates:</p>
+                                        <p className="text-lg font-mono text-gray-900 bg-white p-3 rounded border">
+                                            {site.gpsLatitude}, {site.gpsLongitude}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-md">
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={copyCoordinates}
+                                    >
+                                        <MapPin size={16} className="mr-2" />
+                                        Copy Coordinates
+                                    </Button>
+                                    <Button
+                                        variant="default"
+                                        className="w-full"
+                                        onClick={openGoogleMaps}
+                                    >
+                                        <Globe size={16} className="mr-2" />
+                                        Open in Google Maps
+                                    </Button>
+                                </div>
+
+                                <div className="mt-6 text-center">
+                                    <p className="text-sm text-gray-500 mb-2">For interactive map view:</p>
+                                    <p className="text-xs text-gray-400">
+                                        Install Leaflet: <code className="bg-gray-100 px-2 py-1 rounded">npm install leaflet react-leaflet</code>
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="text-center text-gray-500">
+                                    <Map size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>No coordinates available for this site</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Map Info */}
+                    <div className="p-4 bg-white border-t">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-gray-900">{siteName}</h3>
+                                <p className="text-sm text-gray-600">{site.region} - {site.address}</p>
+                            </div>
+                            <div className="flex space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={copyCoordinates}
+                                >
+                                    Copy Coordinates
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={openGoogleMaps}
+                                >
+                                    Open in Google Maps
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

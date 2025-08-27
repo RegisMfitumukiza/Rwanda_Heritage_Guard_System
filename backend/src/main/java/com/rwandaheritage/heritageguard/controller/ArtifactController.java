@@ -48,6 +48,30 @@ public class ArtifactController {
     }
 
     /**
+     * Get featured artifacts for landing page display
+     * Public access - returns only public artifacts
+     */
+    @GetMapping("/featured")
+    public ResponseEntity<List<ArtifactDTO>> getFeaturedArtifacts(
+            @RequestParam(defaultValue = "6") int limit,
+            @RequestParam(defaultValue = "true") boolean includeHeritageSite,
+            @RequestParam(defaultValue = "true") boolean includeMedia,
+            @RequestParam(defaultValue = "false") boolean includeAuthentications
+    ) {
+        try {
+            List<Artifact> featured = artifactService.getFeaturedArtifacts(limit);
+            List<ArtifactDTO> dtos = featured.stream()
+                .map(artifact -> ArtifactMapper.toDTO(artifact, includeHeritageSite, includeMedia, includeAuthentications))
+                .collect(Collectors.toList());
+            return ResponseEntity.ok(dtos);
+        } catch (Exception e) {
+            log.error("Error fetching featured artifacts: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
+        }
+    }
+
+    /**
      * Get artifact by ID
      * Public if isPublic=true, else requires COMMUNITY_MEMBER or higher
      */

@@ -13,10 +13,12 @@ import {
     MobileTable,
     createColumn,
     LoadingSpinner,
-    SkeletonLoader
+    SkeletonLoader,
+    ConfirmationModal
 } from '../../components/ui';
+
 import { useGet } from '../../hooks/useSimpleApi';
-import { usePost, useDelete } from '../../hooks/useSimpleApi';
+import { deleteArticle as deleteArticleApi } from '../../services/api/educationApi';
 import { toast } from 'react-hot-toast';
 import {
     BookOpen,
@@ -43,6 +45,13 @@ const EducationalArticles = () => {
     const [selectedDifficulty, setSelectedDifficulty] = useState('');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Delete confirmation modal state
+    const [deleteModal, setDeleteModal] = useState({
+        isOpen: false,
+        articleId: null,
+        articleTitle: ''
+    });
+
     // API hooks for articles
     const { data: articlesData, loading: articlesLoading, refetch: refetchArticles } = useGet('/api/education/articles', {
         searchTerm,
@@ -65,18 +74,7 @@ const EducationalArticles = () => {
         onError: (error) => console.error('Failed to load article statistics:', error)
     });
 
-    // Delete article hook
-    const deleteArticle = useDelete('/api/education/articles', {
-        onSuccess: (data, variables) => {
-            // Remove deleted article from local state
-            setArticles(articles.filter(article => article.id !== variables));
-            toast.success('Article deleted successfully');
-        },
-        onError: (error) => {
-            console.error('Failed to delete article:', error);
-            toast.error('Failed to delete article. Please try again.');
-        }
-    });
+
 
     const categories = [
         'History', 'Culture', 'Archaeology', 'Architecture',
@@ -96,16 +94,40 @@ const EducationalArticles = () => {
         }
     }, [articlesData]);
 
-    const handleDeleteArticle = async (articleId) => {
-        if (!window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
-            return;
-        }
+
+
+    // Open delete confirmation modal
+    const openDeleteModal = (articleId, articleTitle) => {
+        setDeleteModal({
+            isOpen: true,
+            articleId,
+            articleTitle: articleTitle?.en || articleTitle?.rw || articleTitle?.fr || `Article ${articleId}`
+        });
+    };
+
+    // Close delete confirmation modal
+    const closeDeleteModal = () => {
+        setDeleteModal({
+            isOpen: false,
+            articleId: null,
+            articleTitle: ''
+        });
+    };
+
+    // Confirm delete action
+    const confirmDelete = async () => {
+        const { articleId } = deleteModal;
+        if (!articleId) return;
 
         try {
-            await deleteArticle.execute(articleId);
+            await deleteArticleApi(articleId);
+            // Remove deleted article from local state
+            setArticles(articles.filter(article => article.id !== articleId));
+            toast.success('Article deleted successfully');
+            closeDeleteModal();
         } catch (err) {
-            // Error handling is done in the hook's onError callback
             console.error('Error in delete handler:', err);
+            toast.error('Failed to delete article. Please try again.');
         }
     };
 
@@ -159,17 +181,6 @@ const EducationalArticles = () => {
         )),
         createColumn('actions', 'Actions', (value, row) => (
             <div className="flex gap-1">
-                {/* Test button to debug */}
-                <button
-                    onClick={() => {
-                        console.log('Test button clicked for article:', row.id);
-                        console.log('Row data:', row);
-                        console.log('Navigate function:', navigate);
-                    }}
-                    className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                >
-                    Test
-                </button>
                 <MobileButton
                     variant="outline"
                     size="sm"
@@ -210,7 +221,7 @@ const EducationalArticles = () => {
                         <MobileButton
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteArticle(row.id)}
+                            onClick={() => openDeleteModal(row.id, row.title)}
                             className="text-red-600 hover:text-red-700"
                         >
                             <Trash2 className="w-4 h-4" />
@@ -247,17 +258,6 @@ const EducationalArticles = () => {
                         <p className="text-gray-600 dark:text-gray-400">Manage and explore educational content about Rwanda's heritage</p>
                     </div>
                     <div className="flex gap-2">
-                        {/* Test button to debug navigation */}
-                        <button
-                            onClick={() => {
-                                console.log('Test button clicked!');
-                                console.log('Navigate function:', navigate);
-                                console.log('Current user:', user);
-                            }}
-                            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                        >
-                            Test Button
-                        </button>
                         <MobileButton
                             variant="outline"
                             onClick={() => setShowFilters(!showFilters)}
@@ -417,7 +417,7 @@ const EducationalArticles = () => {
                                                 <tr key={article.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                                         <div className="font-medium">
-                                                            {article.titleEn || article.titleRw || article.titleFr || `Article ${article.id}`}
+                                                            {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -454,17 +454,6 @@ const EducationalArticles = () => {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                                         <div className="flex gap-1">
-                                                            {/* Test button to debug */}
-                                                            <button
-                                                                onClick={() => {
-                                                                    console.log('Test button clicked for article:', article.id);
-                                                                    console.log('Article data:', article);
-                                                                    console.log('Navigate function:', navigate);
-                                                                }}
-                                                                className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                                                            >
-                                                                Test
-                                                            </button>
                                                             <MobileButton
                                                                 variant="outline"
                                                                 size="sm"
@@ -493,7 +482,7 @@ const EducationalArticles = () => {
                                                                     <MobileButton
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        onClick={() => handleDeleteArticle(article.id)}
+                                                                        onClick={() => openDeleteModal(article.id, article.title)}
                                                                         className="text-red-600 hover:text-red-700"
                                                                     >
                                                                         <Trash2 className="w-4 h-4" />
@@ -512,6 +501,17 @@ const EducationalArticles = () => {
                     </MobileCardContent>
                 </MobileCard>
             </div>
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={closeDeleteModal}
+                onConfirm={confirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete "${deleteModal.articleTitle}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                icon={Trash2}
+            />
         </ComponentErrorBoundary>
     );
 };

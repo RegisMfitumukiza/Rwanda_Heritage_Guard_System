@@ -157,6 +157,16 @@ const DashboardSidebar = ({
                     { id: 'analytics-users', label: 'User Analytics', path: '/dashboard/analytics/users' }
                 ]
             },
+            {
+                id: 'reports',
+                label: 'Report Builder',
+                icon: FileText,
+                path: '/dashboard/reports',
+                roles: ['SYSTEM_ADMINISTRATOR'],
+                children: [
+                    { id: 'reports-builder', label: 'Generate Reports', path: '/dashboard/reports' }
+                ]
+            },
             // System Settings will be implemented in advanced features
         ];
 

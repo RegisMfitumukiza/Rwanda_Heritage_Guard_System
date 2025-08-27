@@ -72,15 +72,15 @@ const EducationalSection = ({
     const transformArticleData = (article) => {
         return {
             id: article.id,
-            title: article.title?.en || article.title?.rw || article.title?.fr || `Article ${article.id}`,
-            description: article.summary?.en || article.summary?.rw || article.summary?.fr ||
-                (article.content?.en || article.content?.rw || article.content?.fr || '').substring(0, 150) + '...',
+            title: article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle'),
+            description: article.summaryEn || article.summaryRw || article.summaryFr ||
+                (article.contentEn || article.contentRw || article.contentFr || t('education.noContentAvailable')).substring(0, 150) + '...',
             category: article.category || 'Cultural Heritage',
             difficulty: article.difficultyLevel || 'Beginner',
-            duration: article.estimatedDuration ? `${article.estimatedDuration} min read` : '15 min read',
-            image: article.featuredImage || 'article-image',
-            featured: article.featured || true,
-            tags: article.tags || ['Heritage', 'Culture', 'Education']
+            duration: article.estimatedReadTimeMinutes ? `${article.estimatedReadTimeMinutes} min read` : '15 min read',
+            image: article.featuredImage || '/education_placeholder.jpg',
+            featured: article.isPublic || false,
+            tags: article.tags ? (Array.isArray(article.tags) ? article.tags : article.tags.split(',')) : ['Heritage', 'Culture', 'Education']
         };
     };
 
@@ -144,6 +144,7 @@ const EducationalSection = ({
         if (onContentClick) {
             onContentClick(content);
         } else {
+            // Navigate directly to the specific article
             navigate(`/education/article/${content.id}`);
         }
     };
@@ -234,6 +235,41 @@ const EducationalSection = ({
                                         </Card>
                                     </motion.div>
                                 ))
+                            ) : articlesError ? (
+                                // Error state
+                                <motion.div
+                                    variants={fadeInUp}
+                                    className="col-span-full text-center py-12"
+                                >
+                                    <div className="text-red-500 text-6xl mb-4">📚</div>
+                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                        {t('education.unableToLoadContent')}
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        {t('education.noContentAvailableMessage')}
+                                    </p>
+                                    <Button
+                                        onClick={() => window.location.reload()}
+                                        variant="outline"
+                                        className="hover:bg-blue-50"
+                                    >
+                                        {t('education.tryAgain')}
+                                    </Button>
+                                </motion.div>
+                            ) : displayContent.length === 0 ? (
+                                // Empty state
+                                <motion.div
+                                    variants={fadeInUp}
+                                    className="col-span-full text-center py-12"
+                                >
+                                    <div className="text-gray-400 text-6xl mb-4">📚</div>
+                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                        {t('education.noContentAvailableEmpty')}
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        {t('education.noContentAvailableEmptyMessage')}
+                                    </p>
+                                </motion.div>
                             ) : (
                                 displayContent.map((content, index) => (
                                     <motion.div
@@ -284,7 +320,7 @@ const EducationalSection = ({
                                                     className="text-blue-600 hover:text-blue-700 p-0 mt-auto"
                                                     onClick={() => handleContentClick(content)}
                                                 >
-                                                    Read Article <ChevronRight size={16} className="ml-1" />
+                                                    {t('education.readArticle')} <ChevronRight size={16} className="ml-1" />
                                                 </Button>
                                             </div>
                                         </Card>

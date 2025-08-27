@@ -398,7 +398,7 @@ const CommunityMemberDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <h4 className="font-medium text-gray-900 dark:text-white">
-                                                        {article.title?.en || article.title?.rw || article.title?.fr || `Article ${article.id}`}
+                                                        {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
                                                     </h4>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                                         Educational Article
@@ -433,7 +433,7 @@ const CommunityMemberDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <h4 className="font-medium text-gray-900 dark:text-white">
-                                                        {quiz.title?.en || quiz.title?.rw || quiz.title?.fr || `Quiz ${quiz.id}`}
+                                                        {quiz.titleEn || quiz.titleRw || quiz.titleFr || t('education.untitledQuiz')}
                                                     </h4>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                                         Passing Score: {quiz.passingScore}% • Time: {quiz.timeLimit}min
@@ -507,7 +507,7 @@ const CommunityMemberDashboard = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-medium text-gray-900 dark:text-white">
-                                                    {article.title?.en || article.title?.rw || article.title?.fr || `Article ${article.id}`}
+                                                    {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
                                                 </h4>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">
                                                     {article.summary?.en || article.summary?.rw || article.summary?.fr || 'No summary available'}
@@ -546,7 +546,7 @@ const CommunityMemberDashboard = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-medium text-gray-900 dark:text-white">
-                                                    {quiz.title?.en || quiz.title?.rw || quiz.title?.fr || `Quiz ${quiz.id}`}
+                                                    {quiz.titleEn || quiz.titleRw || quiz.titleFr || t('education.untitledQuiz')}
                                                 </h4>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">
                                                     {quiz.description?.en || quiz.description?.rw || quiz.description?.fr || 'No description available'}

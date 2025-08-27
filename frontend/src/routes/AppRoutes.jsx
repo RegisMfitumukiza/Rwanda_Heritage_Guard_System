@@ -78,7 +78,7 @@ const UserCreation = React.lazy(() => import('../pages/dashboard/UserCreation'))
 const RoleManagement = React.lazy(() => import('../pages/dashboard/RoleManagement'));
 
 // Report components
-const ReportBuilder = React.lazy(() => import('../pages/dashboard/ReportBuilder'));
+const ReportBuilder = React.lazy(() => import('../components/dashboard/ReportBuilder'));
 
 // Learning components
 const LearningProgress = React.lazy(() => import('../pages/dashboard/LearningProgress'));
