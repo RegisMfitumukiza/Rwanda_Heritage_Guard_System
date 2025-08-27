@@ -21,7 +21,9 @@ export const useGet = (url, params = {}, options = {}) => {
         setError(null);
 
         try {
+            console.log('🔍 useGet: Making request to:', url, 'with params:', params);
             const result = await httpClient.get(url, params);
+            console.log('🔍 useGet: Received result:', result);
             setData(result);
             if (options.onSuccess) options.onSuccess(result);
         } catch (err) {

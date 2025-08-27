@@ -122,18 +122,27 @@ const showError = (error, showToast = true) => {
  */
 const retry = async (fn, retries = CONFIG.RETRY_ATTEMPTS, delay = CONFIG.RETRY_DELAY) => {
     try {
-        return await fn();
+        console.log('🔍 retry: Executing function, attempts left:', retries);
+        const result = await fn();
+        console.log('🔍 retry: Function executed successfully:', result);
+        return result;
     } catch (error) {
-        if (retries === 0) throw error;
+        console.log('🔍 retry: Function failed, attempts left:', retries, 'Error:', error.message);
+        if (retries === 0) {
+            console.log('🔍 retry: No more attempts, throwing error');
+            throw error;
+        }
 
         // Don't retry on certain error types
         if (error.response?.status === 401 ||
             error.response?.status === 403 ||
             error.code === 'ERR_CANCELED') {
+            console.log('🔍 retry: Not retrying due to error type:', error.response?.status || error.code);
             throw error;
         }
 
         // Wait and retry
+        console.log('🔍 retry: Waiting', delay, 'ms before retry...');
         await new Promise(resolve => setTimeout(resolve, delay));
         return retry(fn, retries - 1, delay * 2);
     }
@@ -169,11 +178,20 @@ const isPublicEndpoint = (url) => {
  * Process response data with normalization
  */
 const processResponse = (response) => {
+    console.log('🔍 Processing response:', {
+        responseType: typeof response,
+        hasData: response.data !== undefined,
+        responseData: response.data,
+        fullResponse: response
+    });
+
     let data = response.data !== undefined ? response.data : response;
 
     // Normalize paginated responses for consistency
     if (data && (data.content !== undefined || data.items !== undefined)) {
+        console.log('🔍 Normalizing paginated response:', data);
         data = normalizePaginatedResponse(data);
+        console.log('🔍 Normalized result:', data);
     }
 
     return data;
@@ -236,14 +254,17 @@ class HttpClient {
             }
 
             // Create promise for this request
-            const requestPromise = retry(() =>
-                this.axios.get(url, {
+            const requestPromise = retry(() => {
+                console.log('🔍 httpClient.get: Making axios request to:', url, 'with params:', params);
+                return this.axios.get(url, {
                     params,
                     timeout: CONFIG.TIMEOUT,
                     ...config
-                })
-            ).then(response => {
+                });
+            }).then(response => {
+                console.log('🔍 httpClient.get: Axios response received:', response);
                 const result = processResponse(response);
+                console.log('🔍 httpClient.get: Processed result:', result);
 
                 // Cache result for public endpoints
                 if (isPublicEndpoint(url)) {
@@ -258,6 +279,7 @@ class HttpClient {
 
                 return result;
             }).catch(error => {
+                console.error('🔍 httpClient.get: Axios request failed:', error);
                 // Remove from pending requests on error
                 this.pendingRequests.delete(cacheKey);
                 throw error;

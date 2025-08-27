@@ -91,11 +91,36 @@ const getGlobalErrorMessage = (error) => {
 // Add a request interceptor to automatically include JWT token
 axios.interceptors.request.use(
     config => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // Check if this is a public endpoint
+        const isPublic = [
+            '/api/heritage-sites',
+            '/api/heritage-sites/',
+            '/api/heritage-sites/search',
+            '/api/heritage-sites/statistics',
+            '/api/users/statistics',
+            '/api/documents/statistics',
+            '/api/artifacts/statistics',
+            '/api/education/articles/statistics',
+            '/api/testimonials',
+            '/api/languages',
+            '/api/translations/text',
+            '/api/translations/content',
+            '/api/forum/topics',
+            '/api/forum/posts',
+            '/api/education/articles',
+            '/api/education/quizzes'
+        ].some(endpoint => config.url?.startsWith(endpoint));
+
+        // Only add Authorization header for non-public endpoints
+        if (!isPublic) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } else {
+            console.log('🔍 Axios interceptor: Skipping Authorization header for public endpoint:', config.url);
         }
-        // Don't add Authorization header for public endpoints
+
         return config;
     },
     error => {

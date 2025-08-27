@@ -59,12 +59,14 @@ const FeaturedSitesSection = ({
     });
 
     // Only show section if there is real data (not loading and sites exist)
-    if (!loading && (!sites || sites.length === 0)) {
+    // Check both direct array and paginated content array
+    const hasSites = sites && (Array.isArray(sites) ? sites.length > 0 : (sites.content && sites.content.length > 0));
+    if (!loading && !hasSites) {
         return null;
     }
 
-    // Ensure featuredSites is always an array, even during loading
-    const featuredSites = Array.isArray(sites) ? sites : [];
+    // Process API response - the API returns a paginated object with sites in 'content' array
+    const featuredSites = sites ? (Array.isArray(sites) ? sites : sites.content || sites.data || sites.sites || sites.items || []) : [];
     const displaySites = featuredSites.slice(0, maxSites);
 
     // Dynamic display configuration based on number of sites
@@ -87,7 +89,22 @@ const FeaturedSitesSection = ({
         if (onSiteClick) {
             onSiteClick(site);
         } else {
-            navigate(`/dashboard/sites/${site.id}`);
+            // Navigate to the heritage site details page
+            const siteId = site.id || site._id || site.siteId;
+            if (siteId) {
+                // Validate that the ID is numeric before navigating
+                if (typeof siteId === 'string' && siteId.startsWith('mock-')) {
+                    console.error('Mock ID detected, cannot navigate:', siteId);
+                    return;
+                }
+                if (isNaN(Number(siteId))) {
+                    console.error('Invalid ID format, cannot navigate:', siteId);
+                    return;
+                }
+                navigate(`/heritage-site/${siteId}`);
+            } else {
+                console.error('No valid site ID found:', site);
+            }
         }
     };
 

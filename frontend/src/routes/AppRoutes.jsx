@@ -14,6 +14,7 @@ const LandingPage = React.lazy(() => import('../pages/LandingPage'));
 const About = React.lazy(() => import('../pages/About'));
 const Contact = React.lazy(() => import('../pages/Contact'));
 const PublicEducationalContent = React.lazy(() => import('../pages/PublicEducationalContent'));
+const HeritageSiteDetails = React.lazy(() => import('../pages/HeritageSiteDetails'));
 
 // Authentication pages
 const Login = React.lazy(() => import('../pages/Login'));
@@ -226,6 +227,13 @@ const AppRoutes = () => {
                 <Route path="/education" element={
                     <RouteErrorBoundary routeName="Public Educational Content">
                         <PublicEducationalContent />
+                    </RouteErrorBoundary>
+                } />
+
+                {/* Heritage Site Details Route - Public access */}
+                <Route path="/heritage-site/:id" element={
+                    <RouteErrorBoundary routeName="Heritage Site Details">
+                        <HeritageSiteDetails />
                     </RouteErrorBoundary>
                 } />
 

@@ -31,8 +31,10 @@ const ContentCreationModal = ({ isOpen, onClose, contentType, onSubmit, isSubmit
         category: '',
         difficultyLevel: '',
         summary: '',
+        estimatedReadTimeMinutes: 5, // Required by backend
         tags: '',
         isPublic: true,
+        isActive: true, // Required by backend
         featuredImage: '',
         youtubeVideoUrl: '',
         relatedArtifactId: '',
@@ -43,8 +45,12 @@ const ContentCreationModal = ({ isOpen, onClose, contentType, onSubmit, isSubmit
         questions: []
     });
 
-    const categories = ['History', 'Culture', 'Archaeology', 'Architecture', 'Traditional Crafts'];
-    const difficultyLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+    const categories = [
+        'HERITAGE_SITES', 'TRADITIONAL_CRAFTS', 'CULTURAL_PRACTICES',
+        'HISTORICAL_EVENTS', 'ROYAL_HISTORY', 'TRADITIONAL_MUSIC',
+        'ARCHITECTURE', 'CUSTOMS_TRADITIONS', 'GENERAL_EDUCATION'
+    ];
+    const difficultyLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
 
     const handleInputChange = (field, value) => {
         if (field.includes('.')) {
@@ -66,13 +72,42 @@ const ContentCreationModal = ({ isOpen, onClose, contentType, onSubmit, isSubmit
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const processedData = {
-            ...formData,
+
+        // Transform frontend data structure to match backend DTO
+        const transformedData = {
+            // Title fields - convert from nested to flat
+            titleEn: formData.title.en,
+            titleRw: formData.title.rw,
+            titleFr: formData.title.fr,
+
+            // Content fields - convert from nested to flat
+            contentEn: formData.content.en,
+            contentRw: formData.content.rw,
+            contentFr: formData.content.fr,
+
+            // Summary fields - convert from single to language-specific
+            summaryEn: formData.summary,
+            summaryRw: formData.summary, // For now, use same as English
+            summaryFr: formData.summary, // For now, use same as English
+
+            // Basic fields
+            category: formData.category,
+            difficultyLevel: formData.difficultyLevel,
+            estimatedReadTimeMinutes: formData.estimatedReadTimeMinutes || 5,
+
+            // Tags and other fields
             tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+            isPublic: formData.isPublic,
+            isActive: true, // Default value as required by backend
+
+            // Enhanced content fields
+            featuredImage: formData.featuredImage,
+            youtubeVideoUrl: formData.youtubeVideoUrl,
             relatedArtifactId: formData.relatedArtifactId ? parseInt(formData.relatedArtifactId) : undefined,
             relatedHeritageSiteId: formData.relatedHeritageSiteId ? parseInt(formData.relatedHeritageSiteId) : undefined
         };
-        onSubmit(processedData);
+
+        onSubmit(transformedData);
     };
 
     if (!isOpen) return null;
@@ -202,6 +237,23 @@ const ContentCreationModal = ({ isOpen, onClose, contentType, onSubmit, isSubmit
                             ))}
                         </Select>
                     </div>
+                </div>
+
+                {/* Estimated Read Time */}
+                <div>
+                    <Label htmlFor="estimatedReadTimeMinutes">Estimated Read Time (minutes) *</Label>
+                    <Input
+                        id="estimatedReadTimeMinutes"
+                        type="number"
+                        min="1"
+                        max="480"
+                        value={formData.estimatedReadTimeMinutes || 5}
+                        onChange={(e) => handleInputChange('estimatedReadTimeMinutes', parseInt(e.target.value) || 5)}
+                        required
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                        How long it takes to read this content (1-480 minutes)
+                    </p>
                 </div>
 
                 {/* Quiz Specific Fields */}
@@ -1452,6 +1504,24 @@ const ContentManagerDashboard = () => {
                         </div>
                     </div>
 
+                    {/* Estimated Read Time */}
+                    <div>
+                        <Label htmlFor="estimatedReadTimeMinutes" className="text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Read Time (minutes) *</Label>
+                        <Input
+                            id="estimatedReadTimeMinutes"
+                            name="estimatedReadTimeMinutes"
+                            type="number"
+                            min="1"
+                            max="480"
+                            defaultValue="5"
+                            required
+                            className="mt-1"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">
+                            How long it takes to read this content (1-480 minutes)
+                        </p>
+                    </div>
+
                     {/* Quiz Specific Fields */}
                     {createType === 'quiz' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1783,6 +1853,24 @@ const ContentManagerDashboard = () => {
                                     <option value="Expert">Expert</option>
                                 </Select>
                             </div>
+                        </div>
+
+                        {/* Estimated Read Time */}
+                        <div>
+                            <Label htmlFor="edit-estimatedReadTimeMinutes" className="text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Read Time (minutes) *</Label>
+                            <Input
+                                id="edit-estimatedReadTimeMinutes"
+                                name="estimatedReadTimeMinutes"
+                                type="number"
+                                min="1"
+                                max="480"
+                                defaultValue={editingContent.estimatedReadTimeMinutes || 5}
+                                required
+                                className="mt-1"
+                            />
+                            <p className="text-sm text-gray-500 mt-1">
+                                How long it takes to read this content (1-480 minutes)
+                            </p>
                         </div>
 
                         {/* Quiz Specific Fields */}

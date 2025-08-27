@@ -46,51 +46,98 @@ const HeritageSitesSection = ({ isVisible = false }) => {
         data: sites,
         loading,
         error
-    } = useGet('/api/heritage-sites', { status: 'ACTIVE', limit: 12 }, {
+    } = useGet('/api/heritage-sites', {
+        // Use pagination parameters that match the backend
+        page: 0,
+        size: 12,
+        // Try different status values if needed
+        // status: 'ACTIVE',
+        // status: 'PUBLISHED',
+        // status: 'APPROVED'
+    }, {
         enabled: isVisible,
-        onSuccess: (data) => console.log('Heritage sites loaded:', data),
-        onError: (error) => console.error('Failed to load heritage sites:', error)
+        onSuccess: (data) => {
+            console.log('✅ Heritage sites loaded:', data);
+            console.log('📊 Data type:', typeof data);
+            console.log('📊 Data length:', Array.isArray(data) ? data.length : 'Not an array');
+            console.log('📊 Data keys:', data ? Object.keys(data) : 'No data');
+            console.log('📊 Raw response:', JSON.stringify(data, null, 2));
+
+            // Check if data is wrapped in a response object
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+                console.log('🔍 Data appears to be an object, checking for nested array...');
+                console.log('🔍 Possible keys:', Object.keys(data));
+
+                // Check common response wrapper patterns
+                if (data.content && Array.isArray(data.content)) {
+                    console.log('✅ Found sites in data.content');
+                } else if (data.data && Array.isArray(data.data)) {
+                    console.log('✅ Found sites in data.data');
+                } else if (data.sites && Array.isArray(data.sites)) {
+                    console.log('✅ Found sites in data.sites');
+                } else if (data.items && Array.isArray(data.items)) {
+                    console.log('✅ Found sites in data.items');
+                }
+            }
+        },
+        onError: (error) => {
+            console.error('❌ Failed to load heritage sites:', error);
+            console.error('🔍 Error details:', error.response?.data);
+            console.error('🔍 Error status:', error.response?.status);
+            console.error('🔍 Error message:', error.message);
+            console.error('🔍 Full error object:', error);
+
+            // Check if it's an authentication issue
+            if (error.response?.status === 401) {
+                console.warn('🔐 Authentication issue detected. This endpoint should be public.');
+                console.warn('🔐 Check if there\'s an expired JWT token in localStorage');
+            }
+        }
     });
 
-    // Ensure sites is always an array to prevent map errors
-    const safeSites = Array.isArray(sites) ? sites : [];
+    // Process API response - the API returns a paginated object with sites in 'content' array
+    const safeSites = effectiveSites ? (Array.isArray(effectiveSites) ? effectiveSites : effectiveSites.content || effectiveSites.data || effectiveSites.sites || effectiveSites.items || []) : [];
 
-    // Mock data for testing when API is not available
-    const mockSites = [
-        // {
-        //     id: 'mock-1',
-        //     name: 'Ethnographic Museum of Rwanda',
-        //     description: 'A comprehensive museum showcasing Rwanda\'s cultural heritage, traditional artifacts, and historical exhibits.',
-        //     category: 'Museum',
-        //     location: 'Kigali, Rwanda',
-        //     establishedDate: '1989-01-01',
-        //     rating: '4.8',
-        //     imageUrl: museum
-        // },
-        // {
-        //     id: 'mock-2',
-        //     name: 'Richard Kandt House Museum',
-        //     description: 'Historical residence of the first German colonial resident, now a museum preserving colonial-era architecture.',
-        //     category: 'Historical Site',
-        //     location: 'Kigali, Rwanda',
-        //     establishedDate: '1907-01-01',
-        //     rating: '4.5',
-        //     imageUrl: kandt
-        // },
-        {
-            id: 'mock-3',
-            name: 'King\'s Palace Museum',
-            description:'The Ethnographic Museum in Huye is one of the most important museums in Rwanda, offering a deep insight into the country’s cultural history. It houses a vast collection of artifacts, traditional tools, crafts, musical instruments, and archaeological findings that tell the story of Rwanda’s past and traditions.',
-            category: 'Museum',
-            location: "RN1 Road, Huye (Butare), Southern Province",
-            establishedDate: '1989',
-            // rating: '4.7',
-            imageUrl: museum
+    console.log('🔍 Processing sites from API response:', {
+        rawSites: sites,
+        fallbackData: fallbackData,
+        effectiveSites: effectiveSites,
+        hasContent: effectiveSites?.content ? 'Yes' : 'No',
+        contentLength: effectiveSites?.content?.length || 0,
+        safeSitesLength: safeSites.length
+    });
+
+    // Temporary workaround: If useGet fails, try manual fetch and use the data
+    const [fallbackData, setFallbackData] = React.useState(null);
+
+    React.useEffect(() => {
+        if (isVisible && !sites && !loading && !error) {
+            console.log('🔄 useGet returned null, trying manual fetch as fallback...');
+            fetch('/api/heritage-sites?page=0&size=12')
+                .then(res => res.json())
+                .then(data => {
+                    console.log('🔄 Manual fallback fetch result:', data);
+                    if (data && data.content) {
+                        console.log('✅ Manual fallback successful, found sites:', data.content.length);
+                        setFallbackData(data);
+                    }
+                })
+                .catch(err => console.error('❌ Manual fallback failed:', err));
         }
-    ];
+    }, [isVisible, sites, loading, error]);
 
-    // Use mock data if no real data is available and not loading
-    const displaySites = safeSites.length > 0 ? safeSites : (!loading && !error ? mockSites : []);
+    // Use fallback data if useGet failed
+    const effectiveSites = sites || fallbackData;
+
+    // Only use real API data - no mock data fallback
+    const displaySites = safeSites.filter(site => {
+        const siteId = site.id || site._id || site.siteId;
+        // Filter out any sites with mock IDs or invalid IDs
+        if (!siteId) return false;
+        if (typeof siteId === 'string' && siteId.startsWith('mock-')) return false;
+        if (isNaN(Number(siteId))) return false;
+        return true;
+    });
 
     // Additional safety check
     if (!Array.isArray(displaySites)) {
@@ -99,7 +146,22 @@ const HeritageSitesSection = ({ isVisible = false }) => {
     }
 
     const handleSiteClick = (site) => {
-        navigate(`/dashboard/sites/${site.id}`);
+        // Navigate to the heritage site details page
+        const siteId = site.id || site._id || site.siteId;
+        if (siteId) {
+            // Validate that the ID is numeric before navigating
+            if (typeof siteId === 'string' && siteId.startsWith('mock-')) {
+                console.error('Mock ID detected, cannot navigate:', siteId);
+                return;
+            }
+            if (isNaN(Number(siteId))) {
+                console.error('Invalid ID format, cannot navigate:', siteId);
+                return;
+            }
+            navigate(`/heritage-site/${siteId}`);
+        } else {
+            console.error('No valid site ID found:', site);
+        }
     };
 
     const getSiteImage = (site, index) => {
@@ -186,6 +248,121 @@ const HeritageSitesSection = ({ isVisible = false }) => {
                             </p>
                         </motion.div>
 
+                        {/* Debug Information */}
+                        <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                            <h4 className="font-semibold mb-2">🔍 Debug Info:</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                <div>
+                                    <strong>Loading:</strong> {loading.toString()}
+                                </div>
+                                <div>
+                                    <strong>Error:</strong> {error ? error.message : 'None'}
+                                </div>
+                                <div>
+                                    <strong>Safe Sites:</strong> {safeSites.length}
+                                </div>
+                                <div>
+                                    <strong>Display Sites:</strong> {displaySites.length}
+                                </div>
+                                <div>
+                                    <strong>API URL:</strong> /api/heritage-sites
+                                </div>
+                                <div>
+                                    <strong>API Params:</strong> page=0, size=12
+                                </div>
+                                <div>
+                                    <strong>Component Visible:</strong> {isVisible.toString()}
+                                </div>
+                                <div>
+                                    <strong>Raw Sites:</strong> {sites ? (Array.isArray(sites) ? sites.length : typeof sites) : 'null'}
+                                </div>
+                                <div>
+                                    <strong>Content Array:</strong> {sites?.content ? `${sites.content.length} items` : 'No content array'}
+                                </div>
+                            </div>
+                            <div className="mt-2 space-x-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        console.log('🔍 Current state:', { sites, safeSites, displaySites, loading, error, isVisible });
+                                    }}
+                                >
+                                    Debug Console
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        console.log('🧪 Testing heritage sites endpoint manually...');
+                                        // Clear any potential authentication issues
+                                        const token = localStorage.getItem('token');
+                                        console.log('🔐 Current token:', token ? 'Present' : 'None');
+
+                                        // Test without authentication
+                                        fetch('/api/heritage-sites?page=0&size=5', {
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                // Explicitly remove Authorization header
+                                                'Authorization': ''
+                                            }
+                                        })
+                                            .then(res => {
+                                                console.log('📊 Manual Test Response Status:', res.status);
+                                                console.log('📊 Manual Test Response Headers:', res.headers);
+                                                return res.json();
+                                            })
+                                            .then(data => {
+                                                console.log('📊 Manual Test Data:', data);
+                                                // Test if we can manually set the state
+                                                console.log('🧪 Testing manual state update...');
+                                                // This will help us see if the issue is with state management
+                                                if (data && data.content) {
+                                                    console.log('✅ Manual data has content, testing state update');
+                                                }
+                                            })
+                                            .catch(err => console.error('❌ Manual Test Error:', err));
+                                    }}
+                                >
+                                    Test Public Access
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                        console.log('🧪 Testing alternative API endpoints...');
+                                        // Test different status values
+                                        fetch('/api/heritage-sites?status=PUBLISHED&limit=5')
+                                            .then(res => res.json())
+                                            .then(data => console.log('📊 PUBLISHED sites:', data))
+                                            .catch(err => console.error('❌ PUBLISHED error:', err));
+
+                                        fetch('/api/heritage-sites?limit=5')
+                                            .then(res => res.json())
+                                            .then(data => console.log('📊 No status filter:', data))
+                                            .catch(err => console.error('❌ No status error:', err));
+
+                                        fetch('/api/statistics')
+                                            .then(res => res.json())
+                                            .then(data => console.log('📊 Statistics:', data))
+                                            .catch(err => console.error('❌ Statistics error:', err));
+
+                                        // Test the heritage sites endpoint directly
+                                        fetch('/api/heritage-sites?page=0&size=5')
+                                            .then(res => {
+                                                console.log('📊 Heritage Sites Response Status:', res.status);
+                                                console.log('📊 Heritage Sites Response Headers:', res.headers);
+                                                return res.json();
+                                            })
+                                            .then(data => console.log('📊 Heritage Sites Direct Fetch:', data))
+                                            .catch(err => console.error('❌ Heritage Sites Direct Fetch Error:', err));
+                                    }}
+                                >
+                                    Test Endpoints
+                                </Button>
+                            </div>
+                        </div>
+
                         {/* Heritage Sites Grid */}
                         {loading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -222,6 +399,23 @@ const HeritageSitesSection = ({ isVisible = false }) => {
                                 >
                                     {t('heritageSites.tryAgain')}
                                 </Button>
+                            </div>
+                        ) : displaySites.length === 0 ? (
+                            <div className="text-center py-16">
+                                <div className="text-gray-400 text-6xl mb-4">🏛️</div>
+                                <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                                    {t('heritageSites.noSitesAvailable')}
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                                    {t('heritageSites.noSitesMessage')}
+                                </p>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p>API Response: {JSON.stringify(sites)}</p>
+                                    <p>Content Array: {sites?.content ? `${sites.content.length} items` : 'No content array'}</p>
+                                    <p>Safe Sites Length: {safeSites.length}</p>
+                                    <p>Loading: {loading.toString()}</p>
+                                    <p>Error: {error ? error.message : 'None'}</p>
+                                </div>
                             </div>
                         ) : (
                             <motion.div

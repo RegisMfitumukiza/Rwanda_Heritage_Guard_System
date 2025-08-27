@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../../contexts/AuthContext';
 import { createArticle, createFullQuiz } from '../../services/api/educationApi';
+import axios from 'axios';
 
 import ComponentErrorBoundary from '../../components/error/ComponentErrorBoundary';
 import {
@@ -102,11 +103,45 @@ const EducationalContentCreation = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingArticle, setEditingArticle] = useState(null);
 
+    // Add state for dynamic metadata
+    const [categories, setCategories] = useState([]);
+    const [difficultyLevels, setDifficultyLevels] = useState([]);
+    const [metadataLoading, setMetadataLoading] = useState(true);
+
     // Detect content type from URL parameters
     useEffect(() => {
         const type = searchParams.get('type') || 'article';
         setContentType(type);
     }, [searchParams]);
+
+    // Fetch metadata (categories and difficulty levels)
+    useEffect(() => {
+        const fetchMetadata = async () => {
+            try {
+                setMetadataLoading(true);
+                const [categoriesResponse, difficultyLevelsResponse] = await Promise.all([
+                    axios.get('/api/education/categories'),
+                    axios.get('/api/education/difficulty-levels')
+                ]);
+
+                setCategories(categoriesResponse.data);
+                setDifficultyLevels(difficultyLevelsResponse.data);
+            } catch (error) {
+                console.error('Failed to fetch metadata:', error);
+                // Fallback to hardcoded values if API fails
+                setCategories([
+                    'HERITAGE_SITES', 'TRADITIONAL_CRAFTS', 'CULTURAL_PRACTICES',
+                    'HISTORICAL_EVENTS', 'ROYAL_HISTORY', 'TRADITIONAL_MUSIC',
+                    'ARCHITECTURE', 'CUSTOMS_TRADITIONS', 'GENERAL_EDUCATION'
+                ]);
+                setDifficultyLevels(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
+            } finally {
+                setMetadataLoading(false);
+            }
+        };
+
+        fetchMetadata();
+    }, []);
 
     // Form hooks
     const articleForm = useForm({
@@ -187,13 +222,6 @@ const EducationalContentCreation = () => {
     });
 
     // Constants
-    const categories = [
-        'History', 'Culture', 'Archaeology', 'Architecture', 'Traditional Crafts',
-        'Music & Dance', 'Language', 'Religion', 'Royal Heritage', 'Colonial Period',
-        'Independence Era', 'Modern Rwanda'
-    ];
-
-    const difficultyLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
     const questionTypes = [
         { value: 'MULTIPLE_CHOICE', label: 'Multiple Choice' },
         { value: 'TRUE_FALSE', label: 'True/False' },
@@ -286,6 +314,31 @@ const EducationalContentCreation = () => {
             isCorrect: i === index
         }));
         questionForm.setValue('options', updatedOptions);
+    };
+
+    // Helper functions to convert enum values to user-friendly names
+    const getCategoryDisplayName = (category) => {
+        const displayNames = {
+            'HERITAGE_SITES': 'Heritage Sites',
+            'TRADITIONAL_CRAFTS': 'Traditional Crafts',
+            'CULTURAL_PRACTICES': 'Cultural Practices',
+            'HISTORICAL_EVENTS': 'Historical Events',
+            'ROYAL_HISTORY': 'Royal History',
+            'TRADITIONAL_MUSIC': 'Traditional Music',
+            'ARCHITECTURE': 'Architecture',
+            'CUSTOMS_TRADITIONS': 'Customs & Traditions',
+            'GENERAL_EDUCATION': 'General Education'
+        };
+        return displayNames[category] || category;
+    };
+
+    const getDifficultyDisplayName = (difficulty) => {
+        const displayNames = {
+            'BEGINNER': 'Beginner',
+            'INTERMEDIATE': 'Intermediate',
+            'ADVANCED': 'Advanced'
+        };
+        return displayNames[difficulty] || difficulty;
     };
 
     // Articles for quiz creation
@@ -464,17 +517,20 @@ const EducationalContentCreation = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <FormGroup>
                                         <Label>Category *</Label>
-                                        <Select
+                                        <select
                                             {...articleForm.register('category')}
-                                            className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            disabled={metadataLoading}
                                         >
-                                            <option value="">Select a category</option>
+                                            <option value="">
+                                                {metadataLoading ? 'Loading categories...' : 'Select a category'}
+                                            </option>
                                             {categories.map(cat => (
                                                 <option key={cat} value={cat}>
-                                                    {cat}
+                                                    {getCategoryDisplayName(cat)}
                                                 </option>
                                             ))}
-                                        </Select>
+                                        </select>
                                         {articleForm.formState.errors.category && (
                                             <span className="text-red-500 text-sm">{articleForm.formState.errors.category.message}</span>
                                         )}
@@ -482,17 +538,20 @@ const EducationalContentCreation = () => {
 
                                     <FormGroup>
                                         <Label>Difficulty Level *</Label>
-                                        <Select
+                                        <select
                                             {...articleForm.register('difficultyLevel')}
-                                            className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                            disabled={metadataLoading}
                                         >
-                                            <option value="">Select difficulty level</option>
+                                            <option value="">
+                                                {metadataLoading ? 'Loading difficulty levels...' : 'Select difficulty level'}
+                                            </option>
                                             {difficultyLevels.map(level => (
                                                 <option key={level} value={level}>
-                                                    {level}
+                                                    {getDifficultyDisplayName(level)}
                                                 </option>
                                             ))}
-                                        </Select>
+                                        </select>
                                         {articleForm.formState.errors.difficultyLevel && (
                                             <span className="text-red-500 text-sm">{articleForm.formState.errors.difficultyLevel.message}</span>
                                         )}
@@ -769,17 +828,17 @@ const EducationalContentCreation = () => {
 
                                         <FormGroup>
                                             <Label>Category *</Label>
-                                            <Select
+                                            <select
                                                 {...quizForm.register('category')}
-                                                className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                             >
                                                 <option value="">Select a category</option>
                                                 {categories.map(cat => (
                                                     <option key={cat} value={cat}>
-                                                        {cat}
+                                                        {getCategoryDisplayName(cat)}
                                                     </option>
                                                 ))}
-                                            </Select>
+                                            </select>
                                             {quizForm.formState.errors.category && (
                                                 <span className="text-sm text-red-500">{quizForm.formState.errors.category.message}</span>
                                             )}
@@ -787,17 +846,17 @@ const EducationalContentCreation = () => {
 
                                         <FormGroup>
                                             <Label>Difficulty Level *</Label>
-                                            <Select
+                                            <select
                                                 {...quizForm.register('difficultyLevel')}
-                                                className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                             >
                                                 <option value="">Select difficulty level</option>
                                                 {difficultyLevels.map(level => (
                                                     <option key={level} value={level}>
-                                                        {level}
+                                                        {getDifficultyDisplayName(level)}
                                                     </option>
                                                 ))}
-                                            </Select>
+                                            </select>
                                             {quizForm.formState.errors.difficultyLevel && (
                                                 <span className="text-sm text-red-500">{quizForm.formState.errors.difficultyLevel.message}</span>
                                             )}
@@ -1156,5 +1215,3 @@ const EducationalContentCreation = () => {
 };
 
 export default EducationalContentCreation;
-
-
