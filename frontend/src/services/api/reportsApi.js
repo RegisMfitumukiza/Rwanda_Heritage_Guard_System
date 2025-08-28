@@ -5,11 +5,12 @@ import httpClient from './httpClient';
  * Provides access to report generation and management
  */
 
-// API endpoints
+// API endpoints - UPDATED to match backend
 const ENDPOINTS = {
-    GENERATE: '/api/admin/reports/generate',
-    QUICK: '/api/admin/reports/quick',
-    FILTER_OPTIONS: '/api/admin/reports/filter-options'
+    AVAILABLE_FILTERS: '/api/admin/reports/available-filters',
+    TEMPLATES: '/api/admin/reports/templates',
+    GENERATE_PDF: '/api/admin/reports/generate-pdf',
+    GENERATE_FROM_TEMPLATE: (templateId) => `/api/admin/reports/templates/${templateId}`
 };
 
 /**
@@ -17,33 +18,34 @@ const ENDPOINTS = {
  */
 export const reportsApi = {
     /**
-     * Generate comprehensive report with 3 filters
+     * Get available filter options for frontend
      */
-    generateReport: async (filters) => {
-        const { siteStatus, artifactAuthStatus, mediaType } = filters;
-        
-        const queryParams = new URLSearchParams({
-            siteStatus,
-            artifactAuthStatus,
-            mediaType
+    getAvailableFilters: async () => {
+        return httpClient.get(ENDPOINTS.AVAILABLE_FILTERS);
+    },
+
+    /**
+     * Get report templates
+     */
+    getReportTemplates: async () => {
+        return httpClient.get(ENDPOINTS.TEMPLATES);
+    },
+
+    /**
+     * Generate PDF report with custom filters
+     */
+    generatePdfReport: async (filters) => {
+        return httpClient.post(ENDPOINTS.GENERATE_PDF, filters, {
+            responseType: 'blob' // Important for PDF binary data
         });
-
-        return httpClient.post(`${ENDPOINTS.GENERATE}?${queryParams.toString()}`);
     },
 
     /**
-     * Generate quick report with default filters
+     * Generate report from template
      */
-    generateQuickReport: async () => {
-        return httpClient.get(ENDPOINTS.QUICK);
-    },
-
-    /**
-     * Get available filter options
-     */
-    getFilterOptions: async () => {
-        return httpClient.get(ENDPOINTS.FILTER_OPTIONS);
+    generateFromTemplate: async (templateId, filters) => {
+        return httpClient.post(ENDPOINTS.GENERATE_FROM_TEMPLATE(templateId), filters);
     }
 };
 
-
+export default reportsApi;

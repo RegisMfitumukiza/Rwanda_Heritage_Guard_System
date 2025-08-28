@@ -7,6 +7,7 @@ import RouteErrorBoundary from '../components/error/RouteErrorBoundary';
 
 // Import layout components
 import { AdminLayout, HeritageManagerLayout, ContentManagerLayout, CommunityMemberLayout } from '../components/dashboard/DashboardLayout';
+import Layout from '../components/layout/Layout';
 
 // Lazy load components for better performance
 // Public pages (no authentication required)
@@ -14,6 +15,7 @@ const LandingPage = React.lazy(() => import('../pages/LandingPage'));
 const About = React.lazy(() => import('../pages/About'));
 const Contact = React.lazy(() => import('../pages/Contact'));
 const PublicEducationalContent = React.lazy(() => import('../pages/PublicEducationalContent'));
+const PublicArticleDetail = React.lazy(() => import('../pages/PublicArticleDetail'));
 const HeritageSiteDetails = React.lazy(() => import('../pages/HeritageSiteDetails'));
 
 // Authentication pages
@@ -227,6 +229,13 @@ const AppRoutes = () => {
                 <Route path="/education" element={
                     <RouteErrorBoundary routeName="Public Educational Content">
                         <PublicEducationalContent />
+                    </RouteErrorBoundary>
+                } />
+
+                {/* Public Article Detail Route */}
+                <Route path="/education/article/:id" element={
+                    <RouteErrorBoundary routeName="Public Article Detail">
+                        <PublicArticleDetail />
                     </RouteErrorBoundary>
                 } />
 
@@ -474,6 +483,15 @@ const AppRoutes = () => {
                             </HeritageManagerLayout>
                         </RouteErrorBoundary>
                     </RoleBasedRoute>
+                } />
+
+                {/* Public Artifact Detail Route - Accessible to everyone */}
+                <Route path="/artifacts/:id" element={
+                    <RouteErrorBoundary routeName="Public Artifact Details">
+                        <Layout transparentNav={false}>
+                            <ArtifactDetails />
+                        </Layout>
+                    </RouteErrorBoundary>
                 } />
 
                 <Route path="/dashboard/artifacts/:id" element={

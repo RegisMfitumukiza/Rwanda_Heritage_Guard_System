@@ -170,6 +170,31 @@ axios.interceptors.response.use(
             }
         }
 
+        // Handle 403 errors with session recovery attempt
+        if (error.response?.status === 403) {
+            console.log('403 error detected, attempting session recovery...');
+            // Import and use session recovery utility
+            import('../utils/sessionRecovery.js').then(({ default: sessionRecovery }) => {
+                if (sessionRecovery.canRecover()) {
+                    sessionRecovery.attemptRecovery().then(success => {
+                        if (success) {
+                            console.log('Session recovered, retrying original request...');
+                            // Retry the original request with new token
+                            const token = localStorage.getItem('token');
+                            if (token) {
+                                error.config.headers.Authorization = `Bearer ${token}`;
+                                return axios.request(error.config);
+                            }
+                        } else {
+                            sessionRecovery.scheduleNextAttempt();
+                        }
+                    });
+                }
+            }).catch(importError => {
+                console.log('Could not import session recovery utility:', importError);
+            });
+        }
+
         // Handle network errors more gracefully
         if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
             console.warn('Network connectivity issue detected');

@@ -53,6 +53,12 @@ public class QuizDTO {
     @Size(max = 500, message = "Tags cannot exceed 500 characters")
     private String tags; // Comma-separated tags like "heritage,history,culture"
     
+    @Size(max = 50, message = "Difficulty level cannot exceed 50 characters")
+    private String difficultyLevel; // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+    
+    @Size(max = 100, message = "Category cannot exceed 100 characters")
+    private String category; // History, Culture, Archaeology, etc.
+    
     // Audit fields
     private String createdBy;
     private LocalDateTime createdDate;

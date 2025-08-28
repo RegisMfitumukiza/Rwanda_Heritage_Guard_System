@@ -12,7 +12,8 @@ import {
     MobileBadge,
     MobileTable,
     createColumn,
-    LoadingSpinner
+    LoadingSpinner,
+    ConfirmationModal
 } from '../../components/ui';
 import { useGet } from '../../hooks/useSimpleApi';
 import { useDelete } from '../../hooks/useSimpleApi';
@@ -46,6 +47,13 @@ const EducationalQuizzes = () => {
     const [selectedDifficulty, setSelectedDifficulty] = useState('');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Delete confirmation modal state
+    const [deleteModal, setDeleteModal] = useState({
+        isOpen: false,
+        quizId: null,
+        quizTitle: ''
+    });
+
     // API hooks for quizzes
     const { data: quizzesData, loading: quizzesLoading, refetch: refetchQuizzes } = useGet('/api/education/quizzes', {
         searchTerm,
@@ -53,7 +61,24 @@ const EducationalQuizzes = () => {
         difficultyLevel: selectedDifficulty
     }, {
         onSuccess: (data) => {
+            console.log('Raw quiz data:', data); // Debug logging
             const quizItems = data?.data || data || [];
+            console.log('Processed quiz items:', quizItems); // Debug logging
+
+            // Debug each quiz item to see what fields are available
+            quizItems.forEach((quiz, index) => {
+                console.log(`Quiz ${index + 1}:`, {
+                    id: quiz.id,
+                    titleEn: quiz.titleEn,
+                    difficultyLevel: quiz.difficultyLevel,
+                    timeLimitMinutes: quiz.timeLimitMinutes,
+                    isPublic: quiz.isPublic,
+                    tags: quiz.tags,
+                    createdDate: quiz.createdDate,
+                    allFields: Object.keys(quiz)
+                });
+            });
+
             setQuizzes(quizItems);
         },
         onError: (error) => {
@@ -96,17 +121,36 @@ const EducationalQuizzes = () => {
         onError: (error) => console.error('Failed to load quiz statistics:', error)
     });
 
-    const handleDeleteQuiz = async (quizId) => {
-        if (!window.confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
-            return;
-        }
+    const openDeleteModal = (quizId, quizTitle) => {
+        setDeleteModal({
+            isOpen: true,
+            quizId,
+            quizTitle: quizTitle || `Quiz ${quizId}`
+        });
+    };
+
+    const closeDeleteModal = () => {
+        setDeleteModal({
+            isOpen: false,
+            quizId: null,
+            quizTitle: ''
+        });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.quizId) return;
 
         try {
-            await deleteQuiz.execute(quizId);
+            await deleteQuiz.execute(deleteModal.quizId);
+            closeDeleteModal();
         } catch (err) {
-            // Error handling is done in the hook's onError callback
             console.error('Error in delete handler:', err);
         }
+    };
+
+    const handleDeleteQuiz = async (quizId) => {
+        // This function is now deprecated, use openDeleteModal instead
+        openDeleteModal(quizId, `Quiz ${quizId}`);
     };
 
     const handleSearch = (e) => {
@@ -118,6 +162,10 @@ const EducationalQuizzes = () => {
         setSearchTerm('');
         setSelectedTag('');
         setSelectedDifficulty('');
+    };
+
+    const loadQuizzes = () => {
+        refetchQuizzes();
     };
 
     const getDifficultyColor = (difficulty) => {
@@ -134,101 +182,129 @@ const EducationalQuizzes = () => {
 
 
     const quizColumns = [
-        createColumn('title', 'Title', (value, row) => (
+        createColumn('titleEn', 'Title', (value, row) => (
             <div className="font-medium text-gray-900 dark:text-white">
-                {value?.en || value?.rw || value?.fr || `Quiz ${row.id}`}
+                {value || row.titleEn || row.titleRw || row.titleFr || `Quiz ${row.id}`}
             </div>
         )),
-        createColumn('difficultyLevel', 'Difficulty', (value) => (
-            <MobileBadge variant={getDifficultyColor(value)}>{value}</MobileBadge>
-        )),
-        createColumn('questionCount', 'Questions', (value) => (
-            <div className="flex items-center gap-1">
-                <HelpCircle className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium">{value || 0}</span>
-            </div>
-        )),
-        createColumn('estimatedDuration', 'Duration', (value) => (
-            <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4 text-gray-600" />
+        createColumn('difficultyLevel', 'Difficulty', (value, row) => {
+            const difficulty = value || row.difficultyLevel || 'Not Set';
+            return (
+                <MobileBadge variant={getDifficultyColor(difficulty)}>
+                    {difficulty}
+                </MobileBadge>
+            );
+        }),
+        createColumn('questionCount', 'Questions', (value, row) => {
+            // For now, show a placeholder since questions aren't loaded by default
+            const count = value || row.questionCount || row.questions?.length || 'N/A';
+            return (
+                <div className="flex items-center gap-1">
+                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        {count !== 'N/A' ? count : 'N/A'}
+                    </span>
+                </div>
+            );
+        }),
+        createColumn('timeLimitMinutes', 'Duration', (value, row) => {
+            const duration = value || row.timeLimitMinutes || 'N/A';
+            return (
+                <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {duration !== 'N/A' ? `${duration} min` : 'N/A'}
+                    </span>
+                </div>
+            );
+        }),
+        createColumn('isPublic', 'Access', (value, row) => {
+            // Debug the isPublic value
+            console.log('Access column - row:', row, 'isPublic value:', row.isPublic);
+
+            const isPublic = value !== undefined ? value : (row.isPublic !== undefined ? row.isPublic : true);
+            return (
+                <div className="flex items-center gap-1">
+                    {isPublic ? (
+                        <Globe className="w-4 h-4 text-green-600" />
+                    ) : (
+                        <Lock className="w-4 h-4 text-gray-600" />
+                    )}
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {isPublic ? 'Public' : 'Private'}
+                    </span>
+                </div>
+            );
+        }),
+
+        createColumn('createdDate', 'Created', (value, row) => {
+            const date = value || row.createdDate || row.createdAt || new Date();
+            return (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {value ? `${value} min` : 'N/A'}
+                    {new Date(date).toLocaleDateString()}
                 </span>
-            </div>
-        )),
-        createColumn('isPublic', 'Access', (value) => (
-            <div className="flex items-center gap-1">
-                {value ? (
-                    <Globe className="w-4 h-4 text-green-600" />
-                ) : (
-                    <Lock className="w-4 h-4 text-gray-600" />
-                )}
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {value ? 'Public' : 'Private'}
-                </span>
-            </div>
-        )),
-        createColumn('tags', 'Tags', (value) => (
-            <div className="flex flex-wrap gap-1">
-                {value && value.length > 0 ? (
-                    value.slice(0, 2).map((tag, index) => (
-                        <MobileBadge key={index} variant="outline" className="text-xs">
-                            {tag}
-                        </MobileBadge>
-                    ))
-                ) : (
-                    <span className="text-sm text-gray-500">No tags</span>
-                )}
-                {value && value.length > 2 && (
-                    <MobileBadge variant="secondary" className="text-xs">
-                        +{value.length - 2}
-                    </MobileBadge>
-                )}
-            </div>
-        )),
-        createColumn('createdDate', 'Created', (value) => (
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-                {new Date(value).toLocaleDateString()}
-            </span>
-        )),
-        createColumn('actions', 'Actions', (value, row) => (
-            <div className="flex gap-1">
-                <MobileButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/dashboard/education/quizzes/${row.id}`)}
-                >
-                    <Eye className="w-4 h-4" />
-                </MobileButton>
-                <MobileButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/dashboard/learning/quizzes/${row.id}`)}
-                    className="text-green-600 hover:text-green-700"
-                >
-                    <Play className="w-4 h-4" />
-                </MobileButton>
-                {(user?.role === 'SYSTEM_ADMINISTRATOR' || user?.role === 'CONTENT_MANAGER') && (
-                    <>
-                        <MobileButton
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/dashboard/education/quizzes/${row.id}/edit`)}
-                        >
-                            <Edit className="w-4 h-4" />
-                        </MobileButton>
-                        <MobileButton
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteQuiz(row.id)}
-                            className="text-red-600 hover:text-red-700"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </MobileButton>
-                    </>
-                )}
-            </div>
-        ))
+            );
+        }),
+
+        createColumn('actions', 'Actions', (value, row) => {
+            // Debug the actions column
+            console.log('Actions column - row:', row, 'user role:', user?.role);
+
+            return (
+                <div className="flex flex-wrap gap-1">
+                    <MobileButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            console.log('View button clicked for quiz:', row.id);
+                            console.log('Navigating to:', `/dashboard/education/quizzes/${row.id}`);
+                            navigate(`/dashboard/education/quizzes/${row.id}`);
+                        }}
+                        className="text-xs px-2 py-1"
+                    >
+                        <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline ml-1">View</span>
+                    </MobileButton>
+
+                    <MobileButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/dashboard/learning/quizzes/${row.id}`)}
+                        className="text-green-600 hover:text-green-700 text-xs px-2 py-1"
+                    >
+                        <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline ml-1">Play</span>
+                    </MobileButton>
+
+                    {(user?.role === 'SYSTEM_ADMINISTRATOR' || user?.role === 'CONTENT_MANAGER') && (
+                        <>
+                            <MobileButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    console.log('Edit button clicked for quiz:', row.id);
+                                    console.log('Navigating to:', `/dashboard/education/quizzes/${row.id}/edit`);
+                                    navigate(`/dashboard/education/quizzes/${row.id}/edit`);
+                                }}
+                                className="text-xs px-2 py-1"
+                            >
+                                <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span className="hidden sm:inline ml-1">Edit</span>
+                            </MobileButton>
+                            <MobileButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDeleteModal(row.id, row.titleEn || row.titleRw || row.titleFr || `Quiz ${row.id}`)}
+                                className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+                            >
+                                <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span className="hidden sm:inline ml-1">Delete</span>
+                            </MobileButton>
+                        </>
+                    )}
+                </div>
+            );
+        })
     ];
 
     if (quizzesLoading && quizzes.length === 0) {
@@ -423,6 +499,17 @@ const EducationalQuizzes = () => {
                     </MobileCardContent>
                 </MobileCard>
             </div>
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={closeDeleteModal}
+                onConfirm={confirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete "${deleteModal.quizTitle}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                icon={Trash2}
+            />
         </ComponentErrorBoundary>
     );
 };

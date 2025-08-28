@@ -34,6 +34,9 @@ const ArtifactDetails = () => {
     const [showAuthenticationForm, setShowAuthenticationForm] = useState(false);
     const [showProvenanceForm, setShowProvenanceForm] = useState(false);
 
+    // Check if this is public access (no authenticated user)
+    const isPublicAccess = !user;
+
     const { data: artifact, loading: isLoading, error } = useGet(`/api/artifacts/${parseInt(id)}`, {}, {
         onSuccess: (data) => console.log('Artifact loaded:', data),
         onError: (error) => console.error('Failed to load artifact:', error)
@@ -161,10 +164,14 @@ const ArtifactDetails = () => {
                             Comprehensive information about this cultural artifact
                         </p>
                         <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="font-medium">Your Role:</span> {user?.role === 'SYSTEM_ADMINISTRATOR' ? 'System Administrator' :
-                                user?.role === 'HERITAGE_MANAGER' ? 'Heritage Manager' :
-                                    user?.role === 'CONTENT_MANAGER' ? 'Content Manager' :
-                                        user?.role === 'COMMUNITY_MEMBER' ? 'Community Member' : 'User'}
+                            {!isPublicAccess && (
+                                <>
+                                    <span className="font-medium">Your Role:</span> {user?.role === 'SYSTEM_ADMINISTRATOR' ? 'System Administrator' :
+                                        user?.role === 'HERITAGE_MANAGER' ? 'Heritage Manager' :
+                                            user?.role === 'CONTENT_MANAGER' ? 'Content Manager' :
+                                                user?.role === 'COMMUNITY_MEMBER' ? 'Community Member' : 'User'}
+                                </>
+                            )}
                             {artifact.heritageSite && (
                                 <span className="ml-4">
                                     • <span className="font-medium">Site:</span> {artifact.heritageSite.nameEn || artifact.heritageSite.nameRw || artifact.heritageSite.nameFr}
@@ -175,12 +182,12 @@ const ArtifactDetails = () => {
                     <div className="flex space-x-2">
                         <MobileButton
                             variant="outline"
-                            onClick={() => navigate('/dashboard/artifacts')}
+                            onClick={() => isPublicAccess ? navigate('/') : navigate('/dashboard/artifacts')}
                             icon={ArrowLeft}
                         >
-                            Back to Artifacts
+                            {isPublicAccess ? 'Back to Home' : 'Back to Artifacts'}
                         </MobileButton>
-                        {(user?.role === 'HERITAGE_MANAGER' || user?.role === 'SYSTEM_ADMINISTRATOR') && (
+                        {!isPublicAccess && (user?.role === 'HERITAGE_MANAGER' || user?.role === 'SYSTEM_ADMINISTRATOR') && (
                             <>
                                 <MobileButton
                                     onClick={() => navigate(`/dashboard/artifacts/${id}/edit`)}

@@ -161,7 +161,7 @@ const ENDPOINTS = {
  * @param {EducationalArticle} articleData - Article data
  * @returns {Promise<EducationalArticle>} Created article
  */
-export const createArticle = async (articleData) => {
+const createArticle = async (articleData) => {
     return httpClient.post(ENDPOINTS.ARTICLES, articleData);
 };
 
@@ -170,7 +170,7 @@ export const createArticle = async (articleData) => {
  * @param {number} id - Article ID
  * @returns {Promise<EducationalArticle>} Article data
  */
-export const getArticleById = async (id) => {
+const getArticleById = async (id) => {
     const url = ENDPOINTS.ARTICLE_BY_ID.replace('{id}', id);
     return httpClient.get(url);
 };
@@ -180,7 +180,7 @@ export const getArticleById = async (id) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<EducationalArticle>>} List of articles
  */
-export const getArticles = async (params = {}) => {
+const getArticles = async (params = {}) => {
     return httpClient.get(ENDPOINTS.ARTICLES, { params });
 };
 
@@ -189,7 +189,7 @@ export const getArticles = async (params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<EducationalArticle>>} List of public articles
  */
-export const getPublicArticles = async (params = {}) => {
+const getPublicArticles = async (params = {}) => {
     return httpClient.get(ENDPOINTS.ARTICLE_PUBLIC, { params });
 };
 
@@ -199,7 +199,7 @@ export const getPublicArticles = async (params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<EducationalArticle>>} List of articles by category
  */
-export const getArticlesByCategory = async (category, params = {}) => {
+const getArticlesByCategory = async (category, params = {}) => {
     const url = ENDPOINTS.ARTICLE_CATEGORY.replace('{category}', category);
     return httpClient.get(url, { params });
 };
@@ -210,7 +210,7 @@ export const getArticlesByCategory = async (category, params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<EducationalArticle>>} List of articles by difficulty
  */
-export const getArticlesByDifficulty = async (difficulty, params = {}) => {
+const getArticlesByDifficulty = async (difficulty, params = {}) => {
     const url = ENDPOINTS.ARTICLE_DIFFICULTY.replace('{difficulty}', difficulty);
     return httpClient.get(url, { params });
 };
@@ -221,7 +221,7 @@ export const getArticlesByDifficulty = async (difficulty, params = {}) => {
  * @param {Object} params - Additional search parameters
  * @returns {Promise<Array<EducationalArticle>>} Search results
  */
-export const searchArticles = async (query, params = {}) => {
+const searchArticles = async (query, params = {}) => {
     const searchParams = { query, ...params };
     return httpClient.get(ENDPOINTS.ARTICLE_SEARCH, { params: searchParams });
 };
@@ -232,7 +232,7 @@ export const searchArticles = async (query, params = {}) => {
  * @param {string} language - Language code (en, rw, fr)
  * @returns {Promise<EducationalArticle>} Article in specified language
  */
-export const getArticleByLanguage = async (id, language) => {
+const getArticleByLanguage = async (id, language) => {
     const url = ENDPOINTS.ARTICLE_LANGUAGE
         .replace('{id}', id)
         .replace('{language}', language);
@@ -245,7 +245,7 @@ export const getArticleByLanguage = async (id, language) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<EducationalArticle>>} List of articles in specified language
  */
-export const getArticlesByLanguage = async (language, params = {}) => {
+const getArticlesByLanguage = async (language, params = {}) => {
     const url = ENDPOINTS.ARTICLE_LANGUAGE_LIST.replace('{language}', language);
     return httpClient.get(url, { params });
 };
@@ -256,7 +256,7 @@ export const getArticlesByLanguage = async (language, params = {}) => {
  * @param {EducationalArticle} articleData - Updated article data
  * @returns {Promise<EducationalArticle>} Updated article
  */
-export const updateArticle = async (id, articleData) => {
+const updateArticle = async (id, articleData) => {
     const url = ENDPOINTS.ARTICLE_BY_ID.replace('{id}', id);
     return httpClient.put(url, articleData);
 };
@@ -266,7 +266,7 @@ export const updateArticle = async (id, articleData) => {
  * @param {number} id - Article ID
  * @returns {Promise<void>} Success response
  */
-export const deleteArticle = async (id) => {
+const deleteArticle = async (id) => {
     const url = ENDPOINTS.ARTICLE_BY_ID.replace('{id}', id);
     return httpClient.delete(url);
 };
@@ -280,8 +280,17 @@ export const deleteArticle = async (id) => {
  * @param {Quiz} quizData - Quiz data
  * @returns {Promise<Quiz>} Created quiz
  */
-export const createQuiz = async (quizData) => {
+const createQuiz = async (quizData) => {
     return httpClient.post(ENDPOINTS.QUIZZES, quizData);
+};
+
+/**
+ * Create a quiz question
+ * @param {QuizQuestionDTO} questionData - Question data
+ * @returns {Promise<QuizQuestionDTO>} Created question
+ */
+const createQuizQuestion = async (questionData) => {
+    return httpClient.post(ENDPOINTS.QUIZZES + '/questions', questionData);
 };
 
 /**
@@ -289,7 +298,7 @@ export const createQuiz = async (quizData) => {
  * @param {QuizCreationDTO} quizCreationData - Quiz creation data
  * @returns {Promise<QuizCreationDTO>} Created quiz with questions
  */
-export const createFullQuiz = async (quizCreationData) => {
+const createFullQuiz = async (quizCreationData) => {
     return httpClient.post(ENDPOINTS.QUIZ_FULL, quizCreationData);
 };
 
@@ -298,7 +307,7 @@ export const createFullQuiz = async (quizCreationData) => {
  * @param {number} id - Quiz ID
  * @returns {Promise<Quiz>} Quiz data
  */
-export const getQuizById = async (id) => {
+const getQuizById = async (id) => {
     const url = ENDPOINTS.QUIZ_BY_ID.replace('{id}', id);
     return httpClient.get(url);
 };
@@ -308,7 +317,7 @@ export const getQuizById = async (id) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of quizzes
  */
-export const getQuizzes = async (params = {}) => {
+const getQuizzes = async (params = {}) => {
     return httpClient.get(ENDPOINTS.QUIZZES, { params });
 };
 
@@ -317,7 +326,7 @@ export const getQuizzes = async (params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of public quizzes
  */
-export const getPublicQuizzes = async (params = {}) => {
+const getPublicQuizzes = async (params = {}) => {
     return httpClient.get(ENDPOINTS.QUIZ_PUBLIC, { params });
 };
 
@@ -327,7 +336,7 @@ export const getPublicQuizzes = async (params = {}) => {
  * @param {Object} params - Additional search parameters
  * @returns {Promise<Array<Quiz>>} Search results
  */
-export const searchQuizzes = async (query, params = {}) => {
+const searchQuizzes = async (query, params = {}) => {
     const searchParams = { query, ...params };
     return httpClient.get(ENDPOINTS.QUIZ_SEARCH, { params: searchParams });
 };
@@ -338,7 +347,7 @@ export const searchQuizzes = async (query, params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of quizzes by tags
  */
-export const getQuizzesByTags = async (tag, params = {}) => {
+const getQuizzesByTags = async (tag, params = {}) => {
     const tagParam = Array.isArray(tag) ? tag.join(',') : tag;
     const url = ENDPOINTS.QUIZ_TAGS.replace('{tag}', tagParam);
     return httpClient.get(url, { params });
@@ -349,7 +358,7 @@ export const getQuizzesByTags = async (tag, params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of quizzes with tags
  */
-export const getQuizzesWithTags = async (params = {}) => {
+const getQuizzesWithTags = async (params = {}) => {
     return httpClient.get(ENDPOINTS.QUIZ_WITH_TAGS, { params });
 };
 
@@ -359,7 +368,7 @@ export const getQuizzesWithTags = async (params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of quizzes by article
  */
-export const getQuizzesByArticle = async (articleId, params = {}) => {
+const getQuizzesByArticle = async (articleId, params = {}) => {
     const url = ENDPOINTS.QUIZ_BY_ARTICLE.replace('{articleId}', articleId);
     return httpClient.get(url, { params });
 };
@@ -370,7 +379,7 @@ export const getQuizzesByArticle = async (articleId, params = {}) => {
  * @param {string} language - Language code (en, rw, fr)
  * @returns {Promise<Quiz>} Quiz in specified language
  */
-export const getQuizByLanguage = async (id, language) => {
+const getQuizByLanguage = async (id, language) => {
     const url = ENDPOINTS.QUIZ_LANGUAGE
         .replace('{id}', id)
         .replace('{language}', language);
@@ -383,7 +392,7 @@ export const getQuizByLanguage = async (id, language) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Quiz>>} List of quizzes in specified language
  */
-export const getQuizzesByLanguage = async (language, params = {}) => {
+const getQuizzesByLanguage = async (language, params = {}) => {
     const url = ENDPOINTS.QUIZ_LANGUAGE_LIST.replace('{language}', language);
     return httpClient.get(url, { params });
 };
@@ -394,7 +403,7 @@ export const getQuizzesByLanguage = async (language, params = {}) => {
  * @param {Quiz} quizData - Updated quiz data
  * @returns {Promise<Quiz>} Updated quiz
  */
-export const updateQuiz = async (id, quizData) => {
+const updateQuiz = async (id, quizData) => {
     const url = ENDPOINTS.QUIZ_BY_ID.replace('{id}', id);
     return httpClient.put(url, quizData);
 };
@@ -404,7 +413,7 @@ export const updateQuiz = async (id, quizData) => {
  * @param {number} id - Quiz ID
  * @returns {Promise<void>} Success response
  */
-export const deleteQuiz = async (id) => {
+const deleteQuiz = async (id) => {
     const url = ENDPOINTS.QUIZ_BY_ID.replace('{id}', id);
     return httpClient.delete(url);
 };
@@ -418,7 +427,7 @@ export const deleteQuiz = async (id) => {
  * @param {number} quizId - Quiz ID
  * @returns {Promise<Object>} QuizAttemptDTO data
  */
-export const startQuiz = async (quizId) => {
+const startQuiz = async (quizId) => {
     const url = ENDPOINTS.QUIZ_START.replace('{quizId}', quizId);
     return httpClient.post(url);
 };
@@ -429,7 +438,7 @@ export const startQuiz = async (quizId) => {
  * @param {Object} answers - Question/option map
  * @returns {Promise<Object>} QuizAttemptDTO with results
  */
-export const submitQuiz = async (attemptId, answers) => {
+const submitQuiz = async (attemptId, answers) => {
     const url = ENDPOINTS.QUIZ_SUBMIT.replace('{attemptId}', attemptId);
     return httpClient.post(url, answers);
 };
@@ -440,7 +449,7 @@ export const submitQuiz = async (attemptId, answers) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<Object>>} List of quiz attempts
  */
-export const getQuizAttempts = async (userId, params = {}) => {
+const getQuizAttempts = async (userId, params = {}) => {
     const url = ENDPOINTS.QUIZ_ATTEMPTS.replace('{userId}', userId);
     return httpClient.get(url, { params });
 };
@@ -450,7 +459,7 @@ export const getQuizAttempts = async (userId, params = {}) => {
  * @param {number} attemptId - Attempt ID
  * @returns {Promise<Object>} Quiz attempt data
  */
-export const getQuizAttemptById = async (attemptId) => {
+const getQuizAttemptById = async (attemptId) => {
     const url = ENDPOINTS.QUIZ_ATTEMPT_BY_ID.replace('{attemptId}', attemptId);
     return httpClient.get(url);
 };
@@ -464,7 +473,7 @@ export const getQuizAttemptById = async (attemptId) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<LearningProgress>>} List of learning progress
  */
-export const getLearningProgress = async (params = {}) => {
+const getLearningProgress = async (params = {}) => {
     return httpClient.get(ENDPOINTS.LEARNING_PROGRESS, { params });
 };
 
@@ -474,7 +483,7 @@ export const getLearningProgress = async (params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<LearningProgress>>} List of user's learning progress
  */
-export const getLearningProgressByUser = async (userId, params = {}) => {
+const getLearningProgressByUser = async (userId, params = {}) => {
     const url = ENDPOINTS.PROGRESS_BY_USER.replace('{userId}', userId);
     return httpClient.get(url, { params });
 };
@@ -485,7 +494,7 @@ export const getLearningProgressByUser = async (userId, params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<LearningProgress>>} List of article learning progress
  */
-export const getLearningProgressByArticle = async (articleId, params = {}) => {
+const getLearningProgressByArticle = async (articleId, params = {}) => {
     const url = ENDPOINTS.PROGRESS_BY_ARTICLE.replace('{articleId}', articleId);
     return httpClient.get(url, { params });
 };
@@ -496,7 +505,7 @@ export const getLearningProgressByArticle = async (articleId, params = {}) => {
  * @param {Object} params - Query parameters
  * @returns {Promise<Array<LearningProgress>>} List of quiz learning progress
  */
-export const getLearningProgressByQuiz = async (quizId, params = {}) => {
+const getLearningProgressByQuiz = async (quizId, params = {}) => {
     const url = ENDPOINTS.PROGRESS_BY_QUIZ.replace('{quizId}', quizId);
     return httpClient.get(url, { params });
 };
@@ -505,7 +514,7 @@ export const getLearningProgressByQuiz = async (quizId, params = {}) => {
  * Get progress statistics for current user
  * @returns {Promise<Object>} Statistics data
  */
-export const getProgressStatistics = async () => {
+const getProgressStatistics = async () => {
     return httpClient.get(ENDPOINTS.PROGRESS_STATISTICS);
 };
 
@@ -513,7 +522,7 @@ export const getProgressStatistics = async () => {
  * Get recent learning activity for current user
  * @returns {Promise<Array<Object>>} Recent activity list
  */
-export const getRecentProgressActivity = async () => {
+const getRecentProgressActivity = async () => {
     return httpClient.get(ENDPOINTS.PROGRESS_RECENT_ACTIVITY);
 };
 
@@ -521,7 +530,7 @@ export const getRecentProgressActivity = async () => {
  * Get learning achievements for current user
  * @returns {Promise<Array<Object>>} Achievements list
  */
-export const getProgressAchievements = async () => {
+const getProgressAchievements = async () => {
     return httpClient.get(ENDPOINTS.PROGRESS_ACHIEVEMENTS);
 };
 
@@ -529,7 +538,7 @@ export const getProgressAchievements = async () => {
  * Get quiz history for current user
  * @returns {Promise<Array<Object>>} Quiz attempt history
  */
-export const getQuizHistory = async () => {
+const getQuizHistory = async () => {
     return httpClient.get(ENDPOINTS.PROGRESS_QUIZ_HISTORY);
 };
 
@@ -541,7 +550,7 @@ export const getQuizHistory = async () => {
  * Get available categories
  * @returns {Promise<Array<string>>} List of categories
  */
-export const getCategories = async () => {
+const getCategories = async () => {
     return httpClient.get(ENDPOINTS.CATEGORIES);
 };
 
@@ -549,12 +558,67 @@ export const getCategories = async () => {
  * Get available difficulty levels
  * @returns {Promise<Array<string>>} List of difficulty levels
  */
-export const getDifficultyLevels = async () => {
+const getDifficultyLevels = async () => {
     return httpClient.get(ENDPOINTS.DIFFICULTY_LEVELS);
 };
 
 // ============================================================================
-// EXPORT ALL FUNCTIONS
+// NAMED EXPORTS
+// ============================================================================
+
+export {
+    // Articles
+    createArticle,
+    getArticleById,
+    getArticles,
+    getPublicArticles,
+    getArticlesByCategory,
+    getArticlesByDifficulty,
+    searchArticles,
+    getArticleByLanguage,
+    getArticlesByLanguage,
+    updateArticle,
+    deleteArticle,
+
+    // Quizzes
+    createQuiz,
+    createQuizQuestion,
+    createFullQuiz,
+    getQuizById,
+    getQuizzes,
+    getPublicQuizzes,
+    searchQuizzes,
+    getQuizzesByTags,
+    getQuizzesWithTags,
+    getQuizzesByArticle,
+    getQuizByLanguage,
+    getQuizzesByLanguage,
+    updateQuiz,
+    deleteQuiz,
+
+    // Quiz Management
+    startQuiz,
+    submitQuiz,
+    getQuizAttempts,
+    getQuizAttemptById,
+
+    // Learning Progress
+    getLearningProgress,
+    getLearningProgressByUser,
+    getLearningProgressByArticle,
+    getLearningProgressByQuiz,
+    getProgressStatistics,
+    getRecentProgressActivity,
+    getProgressAchievements,
+    getQuizHistory,
+
+    // Categories and Difficulty
+    getCategories,
+    getDifficultyLevels
+};
+
+// ============================================================================
+// DEFAULT EXPORT
 // ============================================================================
 
 export default {
@@ -573,6 +637,7 @@ export default {
 
     // Quizzes
     createQuiz,
+    createQuizQuestion,
     createFullQuiz,
     getQuizById,
     getQuizzes,

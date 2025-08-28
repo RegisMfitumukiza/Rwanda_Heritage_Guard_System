@@ -41,9 +41,8 @@ public class QuizEvaluationService {
 
     // Start a new quiz attempt
     public QuizAttemptDTO startQuizAttempt(Long quizId) {
-        enforceCanTakeQuiz();
-        
-        String userId = getCurrentUsername();
+        // Allow public access for taking quizzes
+        String userId = getCurrentUsernameOrGuest();
         
         // Validate quiz exists and is active
         Quiz quiz = quizRepository.findById(quizId)
@@ -53,18 +52,26 @@ public class QuizEvaluationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Quiz is not available");
         }
         
-        // Check if user has exceeded max attempts
-        Long currentAttempts = attemptRepository.countAttemptsByQuizAndUser(quizId, userId);
-        if (quiz.getMaxAttempts() != null && currentAttempts >= quiz.getMaxAttempts()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Maximum attempts exceeded for this quiz");
+        // For guest users, we'll use a session-based approach or limit attempts differently
+        if (isGuestUser()) {
+            // Guest users get unlimited attempts but no persistent storage
+            userId = "guest_" + System.currentTimeMillis();
+        } else {
+            // Check if authenticated user has exceeded max attempts
+            Long currentAttempts = attemptRepository.countAttemptsByQuizAndUser(quizId, userId);
+            if (quiz.getMaxAttempts() != null && currentAttempts >= quiz.getMaxAttempts()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Maximum attempts exceeded for this quiz");
+            }
         }
         
         // Create new attempt
-        Integer attemptNumber = attemptRepository.findMaxAttemptNumberByQuizAndUser(quizId, userId);
-        if (attemptNumber == null) {
-            attemptNumber = 0;
+        Integer attemptNumber = 1; // Guest users always start with 1
+        if (!isGuestUser()) {
+            Integer existingAttemptNumber = attemptRepository.findMaxAttemptNumberByQuizAndUser(quizId, userId);
+            if (existingAttemptNumber != null) {
+                attemptNumber = existingAttemptNumber + 1;
+            }
         }
-        attemptNumber++;
         
         QuizAttempt attempt = new QuizAttempt();
         attempt.setQuizId(quizId);
@@ -77,21 +84,30 @@ public class QuizEvaluationService {
         attempt.setCreatedDate(LocalDateTime.now());
         
         QuizAttempt savedAttempt = attemptRepository.save(attempt);
-        return QuizAttemptMapper.toDTO(savedAttempt);
+        return QuizAttemptDTO.builder()
+            .id(savedAttempt.getId())
+            .quizId(savedAttempt.getQuizId())
+            .userId(savedAttempt.getUserId())
+            .startTime(savedAttempt.getStartTime())
+            .attemptNumber(savedAttempt.getAttemptNumber())
+            .isCompleted(savedAttempt.isCompleted())
+            .passed(savedAttempt.isPassed())
+            .createdBy(savedAttempt.getCreatedBy())
+            .createdDate(savedAttempt.getCreatedDate())
+            .build();
     }
 
     // Submit quiz answers and calculate results
     public QuizAttemptDTO submitQuizAttempt(Long attemptId, Map<Long, Long> questionAnswers) {
-        enforceCanTakeQuiz();
-        
-        String userId = getCurrentUsername();
+        // Allow public access for taking quizzes
+        String userId = getCurrentUsernameOrGuest();
         
         // Get the attempt
         QuizAttempt attempt = attemptRepository.findById(attemptId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz attempt not found"));
         
-        // Verify ownership
-        if (!attempt.getUserId().equals(userId)) {
+        // For guest users, we'll be more lenient with ownership verification
+        if (!isGuestUser() && !attempt.getUserId().equals(userId)) {
             throw new AccessDeniedException("You can only submit your own quiz attempts");
         }
         
@@ -169,9 +185,12 @@ public class QuizEvaluationService {
         QuizAttempt attempt = attemptRepository.findById(attemptId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz attempt not found"));
         
-        String userId = getCurrentUsername();
-        if (!attempt.getUserId().equals(userId)) {
-            throw new AccessDeniedException("You can only view your own quiz attempts");
+        // For guest users, we'll be more lenient with access
+        if (!isGuestUser()) {
+            String userId = getCurrentUsername();
+            if (!attempt.getUserId().equals(userId)) {
+                throw new AccessDeniedException("You can only view your own quiz attempts");
+            }
         }
         
         return QuizAttemptMapper.toDTO(attempt);
@@ -202,9 +221,12 @@ public class QuizEvaluationService {
         QuizAttempt attempt = attemptRepository.findById(attemptId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quiz attempt not found"));
         
-        String userId = getCurrentUsername();
-        if (!attempt.getUserId().equals(userId)) {
-            throw new AccessDeniedException("You can only view your own quiz results");
+        // For guest users, we'll be more lenient with access
+        if (!isGuestUser()) {
+            String userId = getCurrentUsername();
+            if (!attempt.getUserId().equals(userId)) {
+                throw new AccessDeniedException("You can only view your own quiz results");
+            }
         }
         
         List<QuizResult> results = resultRepository.findByAttemptIdOrderByCreatedDateAsc(attemptId);
@@ -320,6 +342,19 @@ public class QuizEvaluationService {
         }
     }
 
+    private String getCurrentUsernameOrGuest() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+            return auth.getName();
+        }
+        return "guest_" + System.currentTimeMillis();
+    }
+    
+    private boolean isGuestUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null || !auth.isAuthenticated() || auth.getPrincipal().equals("anonymousUser");
+    }
+    
     private String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) 

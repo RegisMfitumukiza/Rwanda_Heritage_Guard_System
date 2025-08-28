@@ -13,7 +13,8 @@ import {
     Clock,
     MapPin,
     Users,
-    Globe
+    Globe,
+    Calendar
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -257,6 +258,7 @@ const ArtifactSection = ({
 
     // Handle artifact card click
     const handleArtifactClick = (artifact) => {
+        // Navigate to the public artifact details page
         navigate(`/artifacts/${artifact.id}`);
     };
 
@@ -386,7 +388,7 @@ const ArtifactSection = ({
                     </div>
                 )}
 
-                {/* Artifact Categories Preview */}
+                {/* Featured Artifacts Showcase */}
                 <motion.div
                     className="mb-12"
                     initial={{ opacity: 0, y: 20 }}
@@ -395,48 +397,127 @@ const ArtifactSection = ({
                     transition={{ duration: 0.6, delay: 0.2 }}
                 >
                     <h3 className="text-2xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100">
-                        Artifact Categories
+                        Featured Artifacts
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {categoriesLoading ? (
-                            // Loading skeleton for categories
-                            Array.from({ length: 6 }).map((_, index) => (
-                                <motion.div
-                                    key={`category-skeleton-${index}`}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                                >
-                                    <Card className="p-4 text-center hover:shadow-lg transition-shadow">
-                                        <div className="animate-pulse">
-                                            <div className="bg-gray-200 dark:bg-gray-700 h-4 w-20 mx-auto mb-1 rounded"></div>
-                                            <div className="bg-gray-200 dark:bg-gray-700 h-6 w-8 mx-auto rounded"></div>
+
+                    {artifactsLoading ? (
+                        // Loading skeleton for artifact cards
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                                <div key={`artifact-skeleton-${index}`} className="animate-pulse">
+                                    <Card className="overflow-hidden h-full">
+                                        <div className="h-48 bg-gray-200 dark:bg-gray-700"></div>
+                                        <div className="p-4">
+                                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+                                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
                                         </div>
                                     </Card>
-                                </motion.div>
-                            ))
-                        ) : (
-                            statistics.categories.map((category, index) => (
-                                <motion.div
-                                    key={`${category?.name ?? 'category'}-${index}`}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                                    whileHover={{ scale: 1.05 }}
-                                >
-                                    <Card className="p-4 text-center hover:shadow-lg transition-shadow cursor-pointer">
-                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-1">
-                                            {category.name}
-                                        </h4>
-                                        <p className="text-blue-600 font-bold text-lg">
-                                            {category.count.toLocaleString()}
-                                        </p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : artifactsError ? (
+                        <div className="text-center text-gray-500 dark:text-gray-400">
+                            <p>Unable to load featured artifacts at the moment.</p>
+                        </div>
+                    ) : featuredArtifactsData && featuredArtifactsData.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {featuredArtifactsData.map((artifact, index) => (
+                                <div key={artifact.id} className="group cursor-pointer" onClick={() => handleArtifactClick(artifact)}>
+                                    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 h-full">
+                                        {/* Artifact Image */}
+                                        <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                                            {artifact.media && artifact.media.length > 0 ? (
+                                                <img
+                                                    src={`http://localhost:8080${artifact.media[0].filePath}`}
+                                                    alt={artifact.name?.en || 'Artifact'}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'flex';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Archive className="w-16 h-16 text-gray-400" />
+                                                </div>
+                                            )}
+
+                                            {/* Fallback icon when image fails to load */}
+                                            <div className="w-full h-full flex items-center justify-center hidden">
+                                                <Archive className="w-16 h-16 text-gray-400" />
+                                            </div>
+
+                                            {/* Category Badge */}
+                                            <div className="absolute top-3 left-3">
+                                                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                                                    {artifact.category || 'Uncategorized'}
+                                                </span>
+                                            </div>
+
+                                            {/* Authentication Status */}
+                                            {artifact.authentications && artifact.authentications.some(auth => auth.status === 'Authentic') && (
+                                                <div className="absolute top-3 right-3">
+                                                    <div className="bg-green-500 text-white p-1 rounded-full">
+                                                        <Shield className="w-4 h-4" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Artifact Info */}
+                                        <div className="p-4 flex-1 flex flex-col">
+                                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-lg mb-2 line-clamp-2">
+                                                {artifact.name?.en || 'Untitled Artifact'}
+                                            </h4>
+
+                                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2 flex-1">
+                                                {artifact.description?.en || 'No description available'}
+                                            </p>
+
+                                            {/* Heritage Site Info */}
+                                            {artifact.heritageSite && (
+                                                <div className="flex items-center text-sm text-gray-500 mb-3">
+                                                    <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                                                    <span className="truncate">
+                                                        {artifact.heritageSite.nameEn ||
+                                                            artifact.heritageSite.nameRw ||
+                                                            artifact.heritageSite.nameFr ||
+                                                            'Unknown Site'}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Quick Stats */}
+                                            <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    <span>Recently added</span>
+                                                </div>
+                                                <span className="text-blue-600 font-medium">
+                                                    {artifact.authentications && artifact.authentications.some(auth => auth.status === 'Authentic') ? 'Authenticated' : 'Pending'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </Card>
-                                </motion.div>
-                            ))
-                        )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-gray-500 dark:text-gray-400">
+                            <p>No artifacts available yet.</p>
+                        </div>
+                    )}
+
+                    {/* Explore All Artifacts Button */}
+                    <div className="text-center mt-8">
+                        <Button
+                            size="lg"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+                            onClick={() => navigate('/artifacts')}
+                        >
+                            Explore All Artifacts <ChevronRight className="ml-2" size={20} />
+                        </Button>
                     </div>
                 </motion.div>
 

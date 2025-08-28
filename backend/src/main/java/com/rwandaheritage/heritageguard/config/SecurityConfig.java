@@ -92,6 +92,8 @@ public class SecurityConfig {
                 
                 // Allow public GET access to heritage sites
                 .requestMatchers(HttpMethod.GET, "/api/heritage-sites", "/api/heritage-sites/", "/api/heritage-sites/*", "/api/heritage-sites/search").permitAll()
+                // Allow public GET access to heritage site artifacts
+                .requestMatchers(HttpMethod.GET, "/api/heritage-sites/*/artifacts").permitAll()
                 // Allow public GET access to media
                 .requestMatchers(HttpMethod.GET, "/api/media", "/api/media/", "/api/media/*").permitAll()
                 // Allow public GET access to forum search (public topics and posts)
@@ -115,6 +117,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/education/quizzes", "/api/education/quizzes/", "/api/education/quizzes/*", "/api/education/quizzes/search", "/api/education/quizzes/tags/*", "/api/education/quizzes/with-tags", "/api/education/quizzes/article/*").permitAll()
                 // Allow public GET access to quizzes multilingual endpoints
                 .requestMatchers(HttpMethod.GET, "/api/education/quizzes/*/language/*", "/api/education/quizzes/language/*").permitAll()
+                // Allow public access to quiz-taking endpoints (start attempt and submit answers)
+                .requestMatchers(HttpMethod.POST, "/api/education/quizzes/*/attempt").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/education/quizzes/attempt/*/submit").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/education/quizzes/attempt/*", "/api/education/quizzes/attempt/*/results").permitAll()
                 // Allow public GET access to documents (public documents only)
                 .requestMatchers(HttpMethod.GET, "/api/documents/public", "/api/documents/public/*", "/api/documents/types", "/api/documents/languages").permitAll()
                 // Allow public GET access to folders (public folders only)

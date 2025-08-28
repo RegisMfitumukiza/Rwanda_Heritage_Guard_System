@@ -144,7 +144,7 @@ const EducationalSection = ({
         if (onContentClick) {
             onContentClick(content);
         } else {
-            // Navigate directly to the specific article
+            // Navigate directly to the specific article detail page
             navigate(`/education/article/${content.id}`);
         }
     };

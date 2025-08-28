@@ -319,10 +319,9 @@ public class QuizController {
 
     /**
      * Start a new quiz attempt
-     * Requires COMMUNITY_MEMBER or higher
+     * Public access for taking quizzes
      */
     @PostMapping("/{quizId}/attempt")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMINISTRATOR', 'CONTENT_MANAGER', 'COMMUNITY_MEMBER')")
     public ResponseEntity<QuizAttemptDTO> startQuizAttempt(@PathVariable Long quizId) {
         QuizAttemptDTO attempt = evaluationService.startQuizAttempt(quizId);
         return new ResponseEntity<>(attempt, HttpStatus.CREATED);
@@ -330,10 +329,9 @@ public class QuizController {
 
     /**
      * Submit quiz answers and get results
-     * Requires COMMUNITY_MEMBER or higher
+     * Public access for taking quizzes
      */
     @PostMapping("/attempt/{attemptId}/submit")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMINISTRATOR', 'CONTENT_MANAGER', 'COMMUNITY_MEMBER')")
     public ResponseEntity<QuizAttemptDTO> submitQuizAttempt(
             @PathVariable Long attemptId,
             @RequestBody Map<Long, Long> questionAnswers) {
@@ -343,10 +341,9 @@ public class QuizController {
 
     /**
      * Get quiz attempt by ID
-     * Users can only view their own attempts
+     * Public access for quiz-taking
      */
     @GetMapping("/attempt/{attemptId}")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMINISTRATOR', 'CONTENT_MANAGER', 'COMMUNITY_MEMBER')")
     public ResponseEntity<QuizAttemptDTO> getQuizAttempt(@PathVariable Long attemptId) {
         QuizAttemptDTO attempt = evaluationService.getQuizAttempt(attemptId);
         return ResponseEntity.ok(attempt);
@@ -354,10 +351,9 @@ public class QuizController {
 
     /**
      * Get detailed results for a quiz attempt
-     * Users can only view their own results
+     * Public access for quiz-taking
      */
     @GetMapping("/attempt/{attemptId}/results")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMINISTRATOR', 'CONTENT_MANAGER', 'COMMUNITY_MEMBER')")
     public ResponseEntity<List<QuizResultDTO>> getQuizAttemptResults(@PathVariable Long attemptId) {
         List<QuizResultDTO> results = evaluationService.getQuizAttemptResults(attemptId);
         return ResponseEntity.ok(results);

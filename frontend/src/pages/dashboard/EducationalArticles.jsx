@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 import ComponentErrorBoundary from '../../components/error/ComponentErrorBoundary';
 import {
@@ -38,6 +39,7 @@ import {
 const EducationalArticles = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [articles, setArticles] = useState([]);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -74,8 +76,6 @@ const EducationalArticles = () => {
         onError: (error) => console.error('Failed to load article statistics:', error)
     });
 
-
-
     const categories = [
         'History', 'Culture', 'Archaeology', 'Architecture',
         'Traditional Crafts', 'Music & Dance', 'Language', 'Religion',
@@ -93,8 +93,6 @@ const EducationalArticles = () => {
             setArticles(articleItems);
         }
     }, [articlesData]);
-
-
 
     // Open delete confirmation modal
     const openDeleteModal = (articleId, articleTitle) => {
@@ -141,8 +139,6 @@ const EducationalArticles = () => {
         setSelectedCategory('');
         setSelectedDifficulty('');
     };
-
-
 
     const articleColumns = [
         createColumn('title', 'Title', (value, row) => (
@@ -234,10 +230,12 @@ const EducationalArticles = () => {
 
     if (articlesLoading && articles.length === 0) {
         return (
-            <div className="space-y-6">
-                <div className="text-center py-12">
-                    <LoadingSpinner />
-                    <p className="mt-4 text-gray-600">Loading educational articles...</p>
+            <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="text-center py-12">
+                        <LoadingSpinner />
+                        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading educational articles...</p>
+                    </div>
                 </div>
             </div>
         );
@@ -250,28 +248,34 @@ const EducationalArticles = () => {
 
     return (
         <ComponentErrorBoundary>
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Educational Articles</h1>
-                        <p className="text-gray-600 dark:text-gray-400">Manage and explore educational content about Rwanda's heritage</p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                            Educational Articles
+                        </h1>
+                        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+                            Manage and explore educational content about Rwanda's heritage
+                        </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <MobileButton
                             variant="outline"
                             onClick={() => setShowFilters(!showFilters)}
+                            className="w-full sm:w-auto"
                         >
                             <Filter className="w-4 h-4 mr-2" />
-                            Filters
+                            <span className="hidden sm:inline">Filters</span>
                         </MobileButton>
                         {(user?.role === 'SYSTEM_ADMINISTRATOR' || user?.role === 'CONTENT_MANAGER') && (
                             <MobileButton
                                 onClick={() => navigate('/dashboard/education/create?type=article')}
-                                className="bg-blue-600 hover:bg-blue-700"
+                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Create Article
+                                <span className="hidden sm:inline">Create Article</span>
+                                <span className="sm:hidden">Create</span>
                             </MobileButton>
                         )}
                     </div>
@@ -279,37 +283,37 @@ const EducationalArticles = () => {
 
                 {/* Statistics Cards */}
                 {!statsLoading && statistics && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <MobileCard>
-                            <MobileCardContent className="text-center p-4">
-                                <div className="text-2xl font-bold text-blue-600">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                        <MobileCard className="p-3 sm:p-4">
+                            <MobileCardContent className="text-center p-2 sm:p-4">
+                                <div className="text-lg sm:text-2xl font-bold text-blue-600">
                                     {statistics.totalArticles || 0}
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Total Articles</div>
+                                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Articles</div>
                             </MobileCardContent>
                         </MobileCard>
-                        <MobileCard>
-                            <MobileCardContent className="text-center p-4">
-                                <div className="text-2xl font-bold text-green-600">
+                        <MobileCard className="p-3 sm:p-4">
+                            <MobileCardContent className="text-center p-2 sm:p-4">
+                                <div className="text-lg sm:text-2xl font-bold text-green-600">
                                     {statistics.publicArticles || 0}
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Public Articles</div>
+                                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Public Articles</div>
                             </MobileCardContent>
                         </MobileCard>
-                        <MobileCard>
-                            <MobileCardContent className="text-center p-4">
-                                <div className="text-2xl font-bold text-yellow-600">
+                        <MobileCard className="p-3 sm:p-4">
+                            <MobileCardContent className="text-center p-2 sm:p-4">
+                                <div className="text-lg sm:text-2xl font-bold text-yellow-600">
                                     {statistics.privateArticles || 0}
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Private Articles</div>
+                                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Private Articles</div>
                             </MobileCardContent>
                         </MobileCard>
-                        <MobileCard>
-                            <MobileCardContent className="text-center p-4">
-                                <div className="text-2xl font-bold text-purple-600">
+                        <MobileCard className="p-3 sm:p-4">
+                            <MobileCardContent className="text-center p-2 sm:p-4">
+                                <div className="text-lg sm:text-2xl font-bold text-purple-600">
                                     {statistics.recentArticles || 0}
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400">Recent (30 days)</div>
+                                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Recent (30 days)</div>
                             </MobileCardContent>
                         </MobileCard>
                     </div>
@@ -317,31 +321,32 @@ const EducationalArticles = () => {
 
                 {/* Search and Filters */}
                 <MobileCard>
-                    <MobileCardContent className="space-y-4">
-                        <form onSubmit={handleSearch} className="flex gap-2">
+                    <MobileCardContent className="space-y-4 p-4 sm:p-6">
+                        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                             <input
                                 type="text"
                                 placeholder="Search articles..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm px-3 py-2"
                             />
-                            <MobileButton type="submit">
+                            <MobileButton type="submit" className="w-full sm:w-auto">
                                 <Search className="w-4 h-4 mr-2" />
-                                Search
+                                <span className="hidden sm:inline">Search</span>
+                                <span className="sm:hidden">Search</span>
                             </MobileButton>
                         </form>
 
                         {showFilters && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Category
                                     </label>
                                     <select
                                         value={selectedCategory}
                                         onChange={(e) => setSelectedCategory(e.target.value)}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm px-3 py-2"
                                     >
                                         <option value="">All Categories</option>
                                         {categories.map(cat => (
@@ -350,13 +355,13 @@ const EducationalArticles = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Difficulty
                                     </label>
                                     <select
                                         value={selectedDifficulty}
                                         onChange={(e) => setSelectedDifficulty(e.target.value)}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm px-3 py-2"
                                     >
                                         <option value="">All Levels</option>
                                         {difficultyLevels.map(level => (
@@ -364,7 +369,7 @@ const EducationalArticles = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex items-end">
+                                <div className="flex items-end sm:col-span-2 lg:col-span-1">
                                     <MobileButton
                                         variant="outline"
                                         onClick={clearFilters}
@@ -380,14 +385,14 @@ const EducationalArticles = () => {
 
                 {/* Articles Table */}
                 <MobileCard>
-                    <MobileCardHeader>
-                        <MobileCardTitle icon={BookOpen}>
+                    <MobileCardHeader className="p-4 sm:p-6">
+                        <MobileCardTitle icon={BookOpen} className="text-lg sm:text-xl">
                             Articles ({articles.length})
                         </MobileCardTitle>
                     </MobileCardHeader>
-                    <MobileCardContent>
+                    <MobileCardContent className="p-0 sm:p-6">
                         {error ? (
-                            <div className="text-center py-8 text-red-600">
+                            <div className="text-center py-8 px-4 sm:px-6 text-red-600">
                                 <p>{error}</p>
                                 <MobileButton
                                     onClick={() => refetchArticles()}
@@ -397,104 +402,123 @@ const EducationalArticles = () => {
                                 </MobileButton>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {/* Simple HTML table for reliable display */}
+                            <div className="space-y-0">
+                                {/* Responsive table with horizontal scroll on small screens */}
                                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        <thead className="bg-gray-50 dark:bg-gray-800">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Difficulty</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Access</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {console.log('Rendering articles:', articles)}
-                                            {articles.map((article, index) => (
-                                                <tr key={article.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        <div className="font-medium">
-                                                            {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                            {article.category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${article.difficultyLevel === 'BEGINNER' ? 'bg-green-100 text-green-800' :
-                                                            article.difficultyLevel === 'INTERMEDIATE' ? 'bg-yellow-100 text-yellow-800' :
-                                                                article.difficultyLevel === 'ADVANCED' ? 'bg-red-100 text-red-800' :
-                                                                    'bg-gray-100 text-gray-800'
-                                                            }`}>
-                                                            {article.difficultyLevel === 'BEGINNER' ? 'Beginner' :
-                                                                article.difficultyLevel === 'INTERMEDIATE' ? 'Intermediate' :
-                                                                    article.difficultyLevel === 'ADVANCED' ? 'Advanced' :
-                                                                        article.difficultyLevel}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        <div className="flex items-center gap-1">
-                                                            {article.isPublic ? (
-                                                                <Globe className="w-4 h-4 text-green-600" />
-                                                            ) : (
-                                                                <Lock className="w-4 h-4 text-gray-600" />
-                                                            )}
-                                                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                                                                {article.isPublic ? 'Public' : 'Private'}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        {new Date(article.createdDate).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                                        <div className="flex gap-1">
-                                                            <MobileButton
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    console.log('View button clicked for article:', article.id);
-                                                                    console.log('Navigating to:', `/dashboard/education/articles/${article.id}`);
-                                                                    navigate(`/dashboard/education/articles/${article.id}`);
-                                                                }}
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                            </MobileButton>
-
-                                                            {(user?.role === 'SYSTEM_ADMINISTRATOR' || user?.role === 'CONTENT_MANAGER') && (
-                                                                <>
-                                                                    <MobileButton
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            console.log('Edit button clicked for article:', article.id);
-                                                                            console.log('Navigating to:', `/dashboard/education/articles/${article.id}/edit`);
-                                                                            navigate(`/dashboard/education/articles/${article.id}/edit`);
-                                                                        }}
-                                                                    >
-                                                                        <Edit className="w-4 h-4" />
-                                                                    </MobileButton>
-                                                                    <MobileButton
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => openDeleteModal(article.id, article.title)}
-                                                                        className="text-red-600 hover:text-red-700"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </MobileButton>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                            <thead className="bg-gray-50 dark:bg-gray-800">
+                                                <tr>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Category</th>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Difficulty</th>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Access</th>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">Created</th>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                                {console.log('Rendering articles:', articles)}
+                                                {articles.map((article, index) => (
+                                                    <tr key={article.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                                            <div className="font-medium max-w-[200px] sm:max-w-none truncate">
+                                                                {article.titleEn || article.titleRw || article.titleFr || t('education.untitledArticle')}
+                                                            </div>
+                                                            {/* Mobile-only category and difficulty info */}
+                                                            <div className="sm:hidden mt-1 space-y-1">
+                                                                <div className="text-xs text-gray-500">
+                                                                    <span className="font-medium">Category:</span> {article.category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    <span className="font-medium">Difficulty:</span> {article.difficultyLevel === 'BEGINNER' ? 'Beginner' :
+                                                                        article.difficultyLevel === 'INTERMEDIATE' ? 'Intermediate' :
+                                                                            article.difficultyLevel === 'ADVANCED' ? 'Advanced' :
+                                                                                article.difficultyLevel}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white hidden sm:table-cell">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                                {article.category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white hidden md:table-cell">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${article.difficultyLevel === 'BEGINNER' ? 'bg-green-100 text-green-800' :
+                                                                article.difficultyLevel === 'INTERMEDIATE' ? 'bg-yellow-100 text-yellow-800' :
+                                                                    article.difficultyLevel === 'ADVANCED' ? 'bg-red-100 text-red-800' :
+                                                                        'bg-gray-100 text-gray-800'
+                                                                }`}>
+                                                                {article.difficultyLevel === 'BEGINNER' ? 'Beginner' :
+                                                                    article.difficultyLevel === 'INTERMEDIATE' ? 'Intermediate' :
+                                                                        article.difficultyLevel === 'ADVANCED' ? 'Advanced' :
+                                                                            article.difficultyLevel}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white hidden lg:table-cell">
+                                                            <div className="flex items-center gap-1">
+                                                                {article.isPublic ? (
+                                                                    <Globe className="w-4 h-4 text-green-600" />
+                                                                ) : (
+                                                                    <Lock className="w-4 h-4 text-gray-600" />
+                                                                )}
+                                                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                                    {article.isPublic ? 'Public' : 'Private'}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white hidden xl:table-cell">
+                                                            {new Date(article.createdDate).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                <MobileButton
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        console.log('View button clicked for article:', article.id);
+                                                                        console.log('Navigating to:', `/dashboard/education/articles/${article.id}`);
+                                                                        navigate(`/dashboard/education/articles/${article.id}`);
+                                                                    }}
+                                                                    className="text-xs px-2 py-1"
+                                                                >
+                                                                    <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                                    <span className="hidden sm:inline ml-1">View</span>
+                                                                </MobileButton>
+
+                                                                {(user?.role === 'SYSTEM_ADMINISTRATOR' || user?.role === 'CONTENT_MANAGER') && (
+                                                                    <>
+                                                                        <MobileButton
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                console.log('Edit button clicked for article:', article.id);
+                                                                                console.log('Navigating to:', `/dashboard/education/articles/${article.id}/edit`);
+                                                                                navigate(`/dashboard/education/articles/${article.id}/edit`);
+                                                                            }}
+                                                                            className="text-xs px-2 py-1"
+                                                                        >
+                                                                            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                                            <span className="hidden sm:inline ml-1">Edit</span>
+                                                                        </MobileButton>
+                                                                        <MobileButton
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => openDeleteModal(article.id, article.title)}
+                                                                            className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                                            <span className="hidden sm:inline ml-1">Delete</span>
+                                                                        </MobileButton>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -21,7 +21,14 @@ import {
     ChevronLeft,
     ChevronRight,
     X,
-    Map
+    Map,
+    Shield,
+    BarChart3,
+    Eye,
+    ClockIcon,
+    AlertCircle,
+    CheckCircle,
+    XCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -52,6 +59,13 @@ const HeritageSiteDetails = () => {
     const [showImageModal, setShowImageModal] = useState(false);
     const [showMapModal, setShowMapModal] = useState(false);
     const [toast, setToast] = useState({ type: '', message: '' });
+
+    // New state for artifacts
+    const [artifacts, setArtifacts] = useState([]);
+    const [artifactsLoading, setArtifactsLoading] = useState(false);
+    const [artifactsError, setArtifactsError] = useState(null);
+    const [selectedArtifact, setSelectedArtifact] = useState(null);
+    const [showArtifactModal, setShowArtifactModal] = useState(false);
 
     // Validate ID parameter - redirect if invalid
     React.useEffect(() => {
@@ -96,6 +110,167 @@ const HeritageSiteDetails = () => {
             }
         }
     });
+
+    // Fetch artifacts when artifacts tab is selected
+    const {
+        data: artifactsData,
+        loading: artifactsLoadingState,
+        error: artifactsErrorState,
+        refetch: refetchArtifacts
+    } = useGet(`/api/heritage-sites/${id}/artifacts`, {
+        language: currentLanguage
+    }, {
+        enabled: activeTab === 'artifacts' && !!id && !id.startsWith('mock-') && !isNaN(Number(id)),
+        onSuccess: (data) => {
+            console.log('✅ Artifacts loaded:', data);
+            console.log('🔍 Artifacts array:', data?.artifacts);
+            if (data?.artifacts && data.artifacts.length > 0) {
+                console.log('🔍 First artifact:', data.artifacts[0]);
+                console.log('🔍 First artifact media:', data.artifacts[0].media);
+            }
+            setArtifacts(data?.artifacts || []);
+            setArtifactsError(null);
+        },
+        onError: (error) => {
+            console.error('❌ Failed to load artifacts:', error);
+            setArtifactsError(error);
+            setArtifacts([]);
+        }
+    });
+
+    // Update local state when API state changes
+    useEffect(() => {
+        setArtifactsLoading(artifactsLoadingState);
+        setArtifactsError(artifactsErrorState);
+    }, [artifactsLoadingState, artifactsErrorState]);
+
+    // Calculate artifact statistics
+    const artifactStats = React.useMemo(() => {
+        if (!artifacts || artifacts.length === 0) {
+            return {
+                total: 0,
+                authenticated: 0,
+                pending: 0,
+                rejected: 0
+            };
+        }
+
+        return {
+            total: artifacts.length,
+            authenticated: artifacts.filter(a => a.authenticationStatus === 'AUTHENTICATED').length,
+            pending: artifacts.filter(a => a.authenticationStatus === 'PENDING_AUTHENTICATION').length,
+            rejected: artifacts.filter(a => a.authenticationStatus === 'REJECTED').length
+        };
+    }, [artifacts]);
+
+    // Handle artifact selection
+    const handleArtifactClick = (artifact) => {
+        setSelectedArtifact(artifact);
+        setShowArtifactModal(true);
+    };
+
+    // Get authentication status display info
+    const getAuthStatusInfo = (status) => {
+        switch (status) {
+            case 'AUTHENTICATED':
+                return {
+                    icon: CheckCircle,
+                    color: 'text-green-600',
+                    bgColor: 'bg-green-100',
+                    borderColor: 'border-green-200',
+                    label: t('siteDetails.authenticated')
+                };
+            case 'PENDING_AUTHENTICATION':
+                return {
+                    icon: ClockIcon,
+                    color: 'text-yellow-600',
+                    bgColor: 'bg-yellow-100',
+                    borderColor: 'border-yellow-200',
+                    label: t('siteDetails.pending')
+                };
+            case 'REJECTED':
+                return {
+                    icon: XCircle,
+                    color: 'text-red-600',
+                    bgColor: 'bg-red-100',
+                    borderColor: 'border-red-200',
+                    label: t('siteDetails.rejected')
+                };
+            default:
+                return {
+                    icon: AlertCircle,
+                    color: 'text-gray-600',
+                    bgColor: 'bg-gray-100',
+                    borderColor: 'border-gray-200',
+                    label: t('siteDetails.unknown')
+                };
+        }
+    };
+
+    // Get artifact name in current language
+    const getArtifactName = (artifact) => {
+        if (!artifact || !artifact.names) return 'Unnamed Artifact';
+
+        const currentLangName = artifact.names.find(name =>
+            name.languageCode === currentLanguage
+        );
+
+        if (currentLangName) return currentLangName.nameText;
+
+        // Fallback to primary name or first available
+        const primaryName = artifact.names.find(name => name.isPrimary);
+        if (primaryName) return primaryName.nameText;
+
+        return artifact.names[0]?.nameText || 'Unnamed Artifact';
+    };
+
+    // Get artifact description in current language
+    const getArtifactDescription = (artifact) => {
+        if (!artifact || !artifact.descriptions) return '';
+
+        const currentLangDesc = artifact.descriptions.find(desc =>
+            desc.languageCode === currentLanguage
+        );
+
+        if (currentLangDesc) return currentLangDesc.descriptionText;
+
+        // Fallback to primary description or first available
+        const primaryDesc = artifact.descriptions.find(desc => desc.isPrimary);
+        if (primaryDesc) return primaryDesc.descriptionText;
+
+        return artifact.descriptions[0]?.descriptionText || '';
+    };
+
+    // Get primary image for artifact
+    const getArtifactPrimaryImage = (artifact) => {
+        if (!artifact || !artifact.media || artifact.media.length === 0) {
+            return '/heritage_placeholder.jpg';
+        }
+
+        // Get the first media item (since we don't have isPrimary field)
+        const mediaItem = artifact.media[0];
+
+        console.log('Media item:', mediaItem);
+
+        if (mediaItem && mediaItem.filePath) {
+            // Check if it's already a full URL
+            if (mediaItem.filePath.startsWith('http')) {
+                return mediaItem.filePath;
+            }
+
+            // If we have an ID, construct the download URL
+            if (mediaItem.id) {
+                return `/api/media/download/${mediaItem.id}`;
+            }
+
+            // Fallback: try to use filePath directly if it's a relative path
+            if (mediaItem.filePath.startsWith('/')) {
+                return mediaItem.filePath;
+            }
+        }
+
+        return '/heritage_placeholder.jpg';
+    };
 
     // Get the appropriate name and description based on current language (same as SiteDetails.jsx)
     const getLocalizedField = (fieldName) => {
@@ -520,6 +695,7 @@ const HeritageSiteDetails = () => {
                                     {[
                                         { id: 'overview', label: t('siteDetails.overview'), icon: Info },
                                         { id: 'gallery', label: t('siteDetails.photoGallery'), icon: Camera },
+                                        { id: 'artifacts', label: t('siteDetails.artifacts'), icon: Shield },
                                         { id: 'visiting', label: t('siteDetails.visitingInfo'), icon: Navigation }
                                     ].map((tab) => (
                                         <button
@@ -688,6 +864,168 @@ const HeritageSiteDetails = () => {
                                                         <p>{t('siteDetails.noPhotosAvailable')}</p>
                                                         <p className="text-sm mt-2">{t('siteDetails.mediaFilesWillAppearHere')}</p>
                                                     </div>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                    {activeTab === 'artifacts' && (
+                                        <motion.div
+                                            key="artifacts"
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -20 }}
+                                            transition={{ duration: 0.3 }}
+                                        >
+                                            <div className="space-y-6">
+                                                {/* Artifacts Overview */}
+                                                <div>
+                                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                                        {t('siteDetails.artifactsCollection')}
+                                                    </h3>
+                                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                                        {t('siteDetails.artifactsDescription')}
+                                                    </p>
+                                                </div>
+
+                                                {/* Loading State */}
+                                                {artifactsLoading && (
+                                                    <div className="text-center py-12">
+                                                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                                                        <p className="text-gray-600 dark:text-gray-400">Loading artifacts...</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Error State */}
+                                                {artifactsError && (
+                                                    <div className="text-center py-8">
+                                                        <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                                                        <p className="text-red-600 dark:text-red-400 mb-4">Failed to load artifacts</p>
+                                                        <Button
+                                                            onClick={() => refetchArtifacts()}
+                                                            variant="outline"
+                                                            className="px-4 py-2"
+                                                        >
+                                                            Try Again
+                                                        </Button>
+                                                    </div>
+                                                )}
+
+                                                {/* Artifacts Content */}
+                                                {!artifactsLoading && !artifactsError && (
+                                                    <>
+
+
+                                                        {/* Artifacts Grid */}
+                                                        {artifacts.length > 0 ? (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                                {artifacts.map((artifact, index) => {
+                                                                    const authStatus = getAuthStatusInfo(artifact.authenticationStatus);
+                                                                    const StatusIcon = authStatus.icon;
+                                                                    const artifactName = getArtifactName(artifact);
+                                                                    const artifactDesc = getArtifactDescription(artifact);
+                                                                    const primaryImage = getArtifactPrimaryImage(artifact);
+                                                                    console.log('🔍 Artifact:', artifact);
+                                                                    console.log('🔍 Artifact media:', artifact.media);
+                                                                    console.log('🔍 Primary image URL:', primaryImage);
+                                                                    console.log('🔍 Media item details:', artifact.media?.[0]);
+
+                                                                    return (
+                                                                        <motion.div
+                                                                            key={artifact.id || index}
+                                                                            initial={{ opacity: 0, y: 20 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            transition={{ delay: index * 0.1 }}
+                                                                            className="group"
+                                                                        >
+                                                                            <Card
+                                                                                className="border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                                                                                onClick={() => handleArtifactClick(artifact)}
+                                                                            >
+                                                                                {/* Artifact Image */}
+                                                                                <div className="relative h-48 overflow-hidden rounded-t-lg">
+                                                                                    <LazyImage
+                                                                                        src={primaryImage}
+                                                                                        alt={artifactName}
+                                                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                                                    />
+
+                                                                                    {/* Authentication Status Badge */}
+                                                                                    <div className="absolute top-3 right-3">
+                                                                                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${authStatus.bgColor} ${authStatus.color} border ${authStatus.borderColor}`}>
+                                                                                            <StatusIcon size={12} />
+                                                                                            {authStatus.label}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* Hover Overlay */}
+                                                                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                                                                                        <Eye className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <CardContent className="p-4">
+                                                                                    {/* Artifact Name */}
+                                                                                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                                                                                        {artifactName}
+                                                                                    </h4>
+
+                                                                                    {/* Artifact Description */}
+                                                                                    {artifactDesc && (
+                                                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-3">
+                                                                                            {artifactDesc}
+                                                                                        </p>
+                                                                                    )}
+
+                                                                                    {/* Artifact Metadata */}
+                                                                                    <div className="space-y-2 text-xs text-gray-500 dark:text-gray-400">
+                                                                                        {artifact.category && (
+                                                                                            <div className="flex items-center gap-1">
+                                                                                                <Shield size={12} />
+                                                                                                <span>Category: {artifact.category}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {artifact.material && (
+                                                                                            <div className="flex items-center gap-1">
+                                                                                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                                                                <span>Material: {artifact.material}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {artifact.estimatedAge && (
+                                                                                            <div className="flex items-center gap-1">
+                                                                                                <ClockIcon size={12} />
+                                                                                                <span>Age: {artifact.estimatedAge}</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </CardContent>
+                                                                            </Card>
+                                                                        </motion.div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-center py-12">
+                                                                <Shield className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                                                                <p className="text-gray-600 dark:text-gray-400 text-lg mb-2">No artifacts found</p>
+                                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                                    This heritage site doesn't have any artifacts yet.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* View All Artifacts Button */}
+                                                        {artifacts.length > 0 && (
+                                                            <div className="text-center pt-4">
+                                                                <Button
+                                                                    onClick={() => navigate(`/dashboard/artifacts?site=${id}`)}
+                                                                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                                                >
+                                                                    <Shield className="w-4 h-4 mr-2" />
+                                                                    {t('siteDetails.viewAllArtifacts')}
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         </motion.div>
@@ -1016,6 +1354,210 @@ const HeritageSiteDetails = () => {
                 </div>
             </Modal>
 
+            {/* Artifact Detail Modal */}
+            <Modal
+                isOpen={showArtifactModal}
+                onClose={() => setShowArtifactModal(false)}
+                size="xl"
+                className="p-0"
+            >
+                {selectedArtifact && (
+                    <div className="relative">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowArtifactModal(false)}
+                            className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        {/* Artifact Content */}
+                        <div className="w-full bg-white dark:bg-gray-800">
+                            {/* Hero Image */}
+                            <div className="relative h-96 bg-gray-100 dark:bg-gray-700">
+                                <LazyImage
+                                    src={getArtifactPrimaryImage(selectedArtifact)}
+                                    alt={getArtifactName(selectedArtifact)}
+                                    className="w-full h-full object-cover"
+                                />
+
+                                {/* Authentication Status Badge */}
+                                <div className="absolute top-4 left-4">
+                                    {(() => {
+                                        const authStatus = getAuthStatusInfo(selectedArtifact.authenticationStatus);
+                                        const StatusIcon = authStatus.icon;
+                                        return (
+                                            <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium ${authStatus.bgColor} ${authStatus.color} border ${authStatus.borderColor}`}>
+                                                <StatusIcon size={16} />
+                                                {authStatus.label}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* Artifact Details */}
+                            <div className="p-8">
+                                <div className="max-w-4xl mx-auto">
+                                    {/* Title and Basic Info */}
+                                    <div className="mb-8">
+                                        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                                            {getArtifactName(selectedArtifact)}
+                                        </h2>
+                                        <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+                                            {getArtifactDescription(selectedArtifact)}
+                                        </p>
+                                    </div>
+
+                                    {/* Artifact Information Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Artifact Details</h3>
+                                            <div className="space-y-3">
+                                                {selectedArtifact.category && (
+                                                    <div className="flex items-center gap-3">
+                                                        <Shield className="w-5 h-5 text-gray-400" />
+                                                        <div>
+                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Category</span>
+                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.category}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {selectedArtifact.material && (
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-5 h-5 bg-gray-400 rounded-full"></div>
+                                                        <div>
+                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Material</span>
+                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.material}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {selectedArtifact.estimatedAge && (
+                                                    <div className="flex items-center gap-3">
+                                                        <ClockIcon className="w-5 h-5 text-gray-400" />
+                                                        <div>
+                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Estimated Age</span>
+                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.estimatedAge}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Authentication & Provenance</h3>
+                                            <div className="space-y-6">
+                                                {/* Authentication Status */}
+                                                <div className="flex items-center gap-3">
+                                                    {(() => {
+                                                        const authStatus = getAuthStatusInfo(selectedArtifact.authenticationStatus);
+                                                        const StatusIcon = authStatus.icon;
+                                                        return (
+                                                            <>
+                                                                <StatusIcon className={`w-5 h-5 ${authStatus.color}`} />
+                                                                <div>
+                                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Status</span>
+                                                                    <p className={`${authStatus.color} font-medium`}>{authStatus.label}</p>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+
+                                                {/* Authentication Details */}
+                                                {selectedArtifact.authentications && selectedArtifact.authentications.length > 0 && (
+                                                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Authentication Process</h4>
+                                                        {selectedArtifact.authentications.map((auth, index) => (
+                                                            <div key={index} className="space-y-2 text-sm">
+                                                                {auth.date && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                                                        <span className="text-gray-600 dark:text-gray-400">Date: {new Date(auth.date).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                )}
+                                                                {auth.documentation && (
+                                                                    <div className="text-gray-700 dark:text-gray-300">
+                                                                        <span className="font-medium">Documentation:</span> {auth.documentation}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Provenance Details */}
+                                                {selectedArtifact.provenanceRecords && selectedArtifact.provenanceRecords.length > 0 && (
+                                                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Provenance History</h4>
+                                                        {selectedArtifact.provenanceRecords.map((provenance, index) => (
+                                                            <div key={index} className="space-y-2 text-sm">
+                                                                {provenance.acquisitionDate && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                                                        <span className="text-gray-600 dark:text-gray-400">Acquired: {new Date(provenance.acquisitionDate).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                )}
+                                                                {provenance.acquisitionMethod && (
+                                                                    <div className="text-gray-700 dark:text-gray-300">
+                                                                        <span className="font-medium">Method:</span> {provenance.acquisitionMethod}
+                                                                    </div>
+                                                                )}
+                                                                {provenance.previousOwner && (
+                                                                    <div className="text-gray-700 dark:text-gray-300">
+                                                                        <span className="font-medium">Previous Owner:</span> {provenance.previousOwner}
+                                                                    </div>
+                                                                )}
+                                                                {provenance.provenanceNotes && (
+                                                                    <div className="text-gray-700 dark:text-gray-300">
+                                                                        <span className="font-medium">Notes:</span> {provenance.provenanceNotes}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Media Gallery */}
+                                    {selectedArtifact.media && selectedArtifact.media.length > 1 && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Additional Images</h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {selectedArtifact.media.slice(1).map((media, index) => (
+                                                    <div key={index} className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                        <LazyImage
+                                                            src={(() => {
+                                                                if (media.filePath) {
+                                                                    if (media.filePath.startsWith('http')) {
+                                                                        return media.filePath;
+                                                                    }
+                                                                    if (media.id) {
+                                                                        return `/api/media/download/${media.id}`;
+                                                                    }
+                                                                    if (media.filePath.startsWith('/')) {
+                                                                        return media.filePath;
+                                                                    }
+                                                                }
+                                                                return '/heritage_placeholder.jpg';
+                                                            })()}
+                                                            alt={`${getArtifactName(selectedArtifact)} image ${index + 2}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
             {/* Map Modal */}
             <Modal
                 isOpen={showMapModal}
@@ -1114,5 +1656,4 @@ const HeritageSiteDetails = () => {
         </div>
     );
 };
-
 export default HeritageSiteDetails;

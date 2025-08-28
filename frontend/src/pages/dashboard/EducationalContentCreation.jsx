@@ -1,103 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAuth } from '../../contexts/AuthContext';
-import { createArticle, createFullQuiz } from '../../services/api/educationApi';
-import axios from 'axios';
+import { createFullQuiz } from '../../services/api/educationApi';
 
 import ComponentErrorBoundary from '../../components/error/ComponentErrorBoundary';
-import {
-    MobileCard,
-    MobileCardHeader,
-    MobileCardTitle,
-    MobileCardContent,
-    MobileButton,
-    Form,
-    FormGroup,
-    Label,
-    Input,
-    Select,
-    TextArea
-} from '../../components/ui';
+import ArticleCreationForm from '../../components/education/ArticleCreationForm';
+import QuizInformationForm from '../../components/education/QuizInformationForm';
+import QuizQuestionsBuilder from '../../components/education/QuizQuestionsBuilder';
 import { useGet } from '../../hooks/useSimpleApi';
 import {
     BookOpen,
-    HelpCircle,
-    Plus,
-    Save,
-    ArrowLeft,
-    Trash2
+    HelpCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
-// Updated schema to match backend DTO exactly
-const articleSchema = z.object({
-    titleEn: z.string().min(1, 'Title in English is required').max(500, 'Title cannot exceed 500 characters'),
-    titleRw: z.string().max(500, 'Title cannot exceed 500 characters').optional(),
-    titleFr: z.string().max(500, 'Title cannot exceed 500 characters').optional(),
-    contentEn: z.string().min(10, 'Content must be at least 10 characters').max(10000, 'Content cannot exceed 10000 characters'),
-    contentRw: z.string().max(10000, 'Content cannot exceed 10000 characters').optional(),
-    contentFr: z.string().max(10000, 'Content cannot exceed 10000 characters').optional(),
-    summaryEn: z.string().min(1, 'Summary is required').max(1000, 'Summary cannot exceed 1000 characters'),
-    summaryRw: z.string().max(1000, 'Summary cannot exceed 1000 characters').optional(),
-    summaryFr: z.string().max(1000, 'Summary cannot exceed 1000 characters').optional(),
-    category: z.string().min(1, 'Category is required').regex(
-        /^(HERITAGE_SITES|TRADITIONAL_CRAFTS|CULTURAL_PRACTICES|HISTORICAL_EVENTS|ROYAL_HISTORY|TRADITIONAL_MUSIC|ARCHITECTURE|CUSTOMS_TRADITIONS|GENERAL_EDUCATION)$/,
-        'Invalid category. Must be one of: HERITAGE_SITES, TRADITIONAL_CRAFTS, CULTURAL_PRACTICES, HISTORICAL_EVENTS, ROYAL_HISTORY, TRADITIONAL_MUSIC, ARCHITECTURE, CUSTOMS_TRADITIONS, GENERAL_EDUCATION'
-    ),
-    difficultyLevel: z.string().min(1, 'Difficulty level is required').regex(
-        /^(BEGINNER|INTERMEDIATE|ADVANCED)$/,
-        'Invalid difficulty level. Must be one of: BEGINNER, INTERMEDIATE, ADVANCED'
-    ),
-    estimatedReadTimeMinutes: z.number().min(1, 'Estimated read time must be at least 1 minute').max(480, 'Estimated read time cannot exceed 480 minutes'),
-    tags: z.array(z.string().max(50, 'Tag cannot exceed 50 characters')).max(10, 'Cannot have more than 10 tags').optional(),
-    isPublic: z.boolean().default(true),
-    isActive: z.boolean().default(true),
-    featuredImage: z.string().optional(),
-    youtubeVideoUrl: z.string().optional(),
-    relatedArtifactId: z.union([z.number().positive(), z.undefined(), z.null(), z.string().length(0)]).optional(),
-    relatedHeritageSiteId: z.union([z.number().positive(), z.undefined(), z.null(), z.string().length(0)]).optional()
-});
-
-const quizSchema = z.object({
-    titleEn: z.string().min(1, 'English title is required'),
-    titleRw: z.string().optional(),
-    titleFr: z.string().optional(),
-    descriptionEn: z.string().min(10, 'English description is required'),
-    descriptionRw: z.string().optional(),
-    descriptionFr: z.string().optional(),
-    articleId: z.number().min(1, 'Article ID is required'),
-    category: z.string().min(1, 'Category is required'),
-    difficultyLevel: z.string().min(1, 'Difficulty level is required'),
-    passingScorePercentage: z.number().min(1).max(100).default(70),
-    timeLimitMinutes: z.number().min(1).max(480).default(30),
-    maxAttempts: z.number().min(1).max(10).default(3),
-    tags: z.string().optional(),
-    isPublic: z.boolean().default(true),
-    featuredImage: z.string().optional(),
-    youtubeVideoUrl: z.string().optional(),
-    relatedArtifactId: z.number().optional(),
-    relatedHeritageSiteId: z.number().optional()
-});
-
-const questionSchema = z.object({
-    questionTextEn: z.string().min(1, 'Question text in English is required'),
-    questionTextRw: z.string().optional(),
-    questionTextFr: z.string().optional(),
-    explanationEn: z.string().optional(),
-    explanationRw: z.string().optional(),
-    explanationFr: z.string().optional(),
-    questionType: z.enum(['MULTIPLE_CHOICE', 'TRUE_FALSE', 'FILL_IN_BLANK']).default('MULTIPLE_CHOICE'),
-    points: z.number().min(1).max(10).default(1),
-    options: z.array(z.object({
-        optionTextEn: z.string().min(1, 'Option text in English is required'),
-        optionTextRw: z.string().optional(),
-        optionTextFr: z.string().optional(),
-        isCorrect: z.boolean().default(false)
-    })).min(2, 'At least 2 options are required').max(6, 'Cannot have more than 6 options')
-});
 
 const EducationalContentCreation = () => {
     const { user } = useAuth();
@@ -114,180 +29,41 @@ const EducationalContentCreation = () => {
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-    // Multiple question management functions
-    const addQuestion = () => {
-        const newQuestion = {
-            questionTextEn: '',
-            questionTextRw: '',
-            questionTextFr: '',
-            explanationEn: '',
-            explanationRw: '',
-            explanationFr: '',
-            questionType: 'MULTIPLE_CHOICE',
-            points: 1,
-            options: [
-                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false },
-                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false }
-            ]
-        };
-        setQuestions([...questions, newQuestion]);
-        setCurrentQuestionIndex(questions.length);
-        questionForm.reset(newQuestion);
-    };
-
-    const removeQuestionByIndex = (index) => {
-        const updatedQuestions = questions.filter((_, i) => i !== index);
-        setQuestions(updatedQuestions);
-        if (updatedQuestions.length > 0) {
-            setCurrentQuestionIndex(Math.min(currentQuestionIndex, updatedQuestions.length - 1));
-            questionForm.reset(updatedQuestions[Math.min(currentQuestionIndex, updatedQuestions.length - 1)]);
-        } else {
-            questionForm.reset();
-        }
-    };
-
-    const saveCurrentQuestion = () => {
-        const currentQuestionData = questionForm.getValues();
-        if (!currentQuestionData.questionTextEn.trim()) {
-            toast.error('Question text in English is required');
-            return;
-        }
-
-        const updatedQuestions = [...questions];
-        updatedQuestions[currentQuestionIndex] = currentQuestionData;
-        setQuestions(updatedQuestions);
-        toast.success(`Question ${currentQuestionIndex + 1} saved!`);
-    };
-
-    const selectQuestion = (index) => {
-        setCurrentQuestionIndex(index);
-        questionForm.reset(questions[index]);
-    };
-
-    // Constants - Use correct backend enum values
-    const categories = [
-        'HERITAGE_SITES', 'TRADITIONAL_CRAFTS', 'CULTURAL_PRACTICES',
-        'HISTORICAL_EVENTS', 'ROYAL_HISTORY', 'TRADITIONAL_MUSIC',
-        'ARCHITECTURE', 'CUSTOMS_TRADITIONS', 'GENERAL_EDUCATION'
-    ];
-    const difficultyLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
-
-    // Helper functions to convert enum values to user-friendly names
-    const getCategoryDisplayName = (category) => {
-        const displayNames = {
-            'HERITAGE_SITES': 'Heritage Sites',
-            'TRADITIONAL_CRAFTS': 'Traditional Crafts',
-            'CULTURAL_PRACTICES': 'Cultural Practices',
-            'HISTORICAL_EVENTS': 'Historical Events',
-            'ROYAL_HISTORY': 'Royal History',
-            'TRADITIONAL_MUSIC': 'Traditional Music',
-            'ARCHITECTURE': 'Architecture',
-            'CUSTOMS_TRADITIONS': 'Customs & Traditions',
-            'GENERAL_EDUCATION': 'General Education'
-        };
-        return displayNames[category] || category;
-    };
-
-    const getDifficultyDisplayName = (difficulty) => {
-        const displayNames = {
-            'BEGINNER': 'Beginner',
-            'INTERMEDIATE': 'Intermediate',
-            'ADVANCED': 'Advanced'
-        };
-        return displayNames[difficulty] || difficulty;
-    };
-
     // Detect content type from URL parameters
     useEffect(() => {
         const type = searchParams.get('type') || 'article';
         setContentType(type);
     }, [searchParams]);
 
-    // Form hooks - Updated to match backend DTO structure exactly
-    const articleForm = useForm({
-        resolver: zodResolver(articleSchema),
-        defaultValues: {
-            titleEn: '',
-            titleRw: '',
-            titleFr: '',
-            contentEn: '',
-            contentRw: '',
-            contentFr: '',
-            summaryEn: '',
-            summaryRw: '',
-            summaryFr: '',
-            category: '',
-            difficultyLevel: '',
-            estimatedReadTimeMinutes: 15,
-            tags: [],
-            isPublic: true,
-            isActive: true,
-            featuredImage: '',
-            youtubeVideoUrl: '',
-            relatedArtifactId: undefined,
-            relatedHeritageSiteId: undefined
+    // Detect edit mode and load article data
+    useEffect(() => {
+        if (articleId && contentType === 'article') {
+            setIsEditMode(true);
+            // Load existing article data
+            fetchArticleData(articleId);
+        } else {
+            setIsEditMode(false);
+            setEditingArticle(null);
         }
-    });
+    }, [articleId, contentType]);
 
-    const quizForm = useForm({
-        resolver: zodResolver(quizSchema),
-        defaultValues: {
-            titleEn: '',
-            titleRw: '',
-            titleFr: '',
-            descriptionEn: '',
-            descriptionRw: '',
-            descriptionFr: '',
-            articleId: undefined,
-            category: '',
-            difficultyLevel: '',
-            passingScorePercentage: 70,
-            timeLimitMinutes: 30,
-            maxAttempts: 3,
-            tags: '',
-            isPublic: true,
-            featuredImage: '',
-            youtubeVideoUrl: '',
-            relatedArtifactId: undefined,
-            relatedHeritageSiteId: undefined
+    // Fetch article data for editing
+    const fetchArticleData = async (id) => {
+        try {
+            const response = await fetch(`/api/education/articles/${id}`);
+            if (response.ok) {
+                const articleData = await response.json();
+                setEditingArticle(articleData);
+            } else {
+                toast.error('Failed to load article for editing');
+                navigate('/dashboard/education/articles');
+            }
+        } catch (error) {
+            console.error('Error fetching article:', error);
+            toast.error('Failed to load article for editing');
+            navigate('/dashboard/education/articles');
         }
-    });
-
-    const questionForm = useForm({
-        resolver: zodResolver(questionSchema),
-        defaultValues: {
-            questionTextEn: '',
-            questionTextRw: '',
-            questionTextFr: '',
-            explanationEn: '',
-            explanationRw: '',
-            explanationFr: '',
-            questionType: 'MULTIPLE_CHOICE',
-            points: 1,
-            options: [
-                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false },
-                { optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false }
-            ]
-        }
-    });
-
-    // Field arrays for dynamic form elements
-    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
-        control: questionForm.control,
-        name: 'options'
-    });
-
-    const { fields: tagFields, append: appendTag, remove: removeTagField } = useFieldArray({
-        control: articleForm.control,
-        name: 'tags'
-    });
-
-    // Constants
-    const questionTypes = [
-        { value: 'MULTIPLE_CHOICE', label: 'Multiple Choice' },
-        { value: 'TRUE_FALSE', label: 'True/False' },
-        { value: 'FILL_IN_BLANK', label: 'Fill in the Blank' }
-    ];
+    };
 
     // API hooks
     const { data: articlesData, loading: articlesLoading } = useGet('/api/education/articles', {}, {
@@ -295,115 +71,115 @@ const EducationalContentCreation = () => {
         onError: (error) => console.error('Failed to load articles:', error)
     });
 
-    // Article creation handler - FIXED to send correct data structure
-    const handleArticleSubmit = async (data) => {
+    // Quiz creation handler
+    const handleQuizSubmit = async (quizData) => {
         try {
             setIsSubmitting(true);
 
-            // Force form validation
-            const isValid = await articleForm.trigger();
-            if (!isValid) {
-                console.log('Form validation failed:', articleForm.formState.errors);
-                toast.error('Please fix validation errors before submitting');
+            // Check if we have questions
+            if (questions.length === 0) {
+                toast.error('Please add at least one question to the quiz');
                 return;
             }
 
-            // Transform data to match backend DTO exactly
-            const transformedData = {
-                titleEn: data.titleEn,
-                titleRw: data.titleRw || '',
-                titleFr: data.titleFr || '',
-                contentEn: data.contentEn,
-                contentRw: data.contentRw || '',
-                contentFr: data.contentFr || '',
-                summaryEn: data.summaryEn,
-                summaryRw: data.summaryRw || '',
-                summaryFr: data.summaryFr || '',
-                category: data.category,
-                difficultyLevel: data.difficultyLevel,
-                estimatedReadTimeMinutes: data.estimatedReadTimeMinutes,
-                tags: data.tags || [],
-                isPublic: data.isPublic,
-                isActive: data.isActive,
-                featuredImage: data.featuredImage || '',
-                youtubeVideoUrl: data.youtubeVideoUrl || '',
-                relatedArtifactId: data.relatedArtifactId,
-                relatedHeritageSiteId: data.relatedHeritageSiteId
+            // Transform quiz data to match backend DTO structure
+            const transformedQuizData = {
+                titleEn: quizData.titleEn || '',
+                titleRw: quizData.titleRw || '',
+                titleFr: quizData.titleFr || '',
+                descriptionEn: quizData.descriptionEn || '',
+                descriptionRw: quizData.descriptionRw || '',
+                descriptionFr: quizData.descriptionFr || '',
+                articleId: quizData.articleId,
+                category: quizData.category || '',
+                difficultyLevel: quizData.difficultyLevel || '',
+                passingScorePercentage: quizData.passingScorePercentage || 70,
+                timeLimitMinutes: quizData.timeLimitMinutes || 30,
+                maxAttempts: quizData.maxAttempts || 3,
+                tags: quizData.tags || '',
+                isActive: true,
+                isPublic: quizData.isPublic !== undefined ? quizData.isPublic : true
             };
 
-            console.log('Sending data to backend:', transformedData);
-            await createArticle(transformedData);
-            toast.success('Article created successfully!');
-            navigate('/dashboard/education/articles');
-        } catch (error) {
-            console.error('Error creating article:', error);
-            toast.error('Failed to create article. Please try again.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+            // Validate required fields before sending
+            const requiredFields = ['titleEn', 'descriptionEn', 'articleId', 'category', 'difficultyLevel'];
+            const missingFields = requiredFields.filter(field => !transformedQuizData[field]);
 
-    // Quiz creation handler
-    const handleQuizSubmit = async (data) => {
-        try {
-            setIsSubmitting(true);
+            if (missingFields.length > 0) {
+                toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+                return;
+            }
 
-            // Prepare quiz data
-            const quizData = {
-                ...data,
-                tags: data.tags || ''
-            };
+            // Validate questions have required fields
+            const invalidQuestions = questions.filter(q => !q.questionTextEn || !q.options || q.options.length === 0);
+            if (invalidQuestions.length > 0) {
+                toast.error(`Question ${invalidQuestions[0].questionOrder || 1} is missing required fields`);
+                return;
+            }
 
-            // Prepare questions data
-            const questionsData = [questionForm.getValues()];
+            // Validate at least one correct answer per question
+            const questionsWithoutCorrectAnswer = questions.filter(q => !q.options.some(opt => opt.isCorrect));
+            if (questionsWithoutCorrectAnswer.length > 0) {
+                toast.error(`Question ${questionsWithoutCorrectAnswer[0].questionOrder || 1} must have at least one correct answer`);
+                return;
+            }
 
-            // Create quiz with questions
+            // Transform questions to match backend DTO structure
+            const transformedQuestions = questions.map((question, index) => ({
+                questionTextEn: question.questionTextEn || '',
+                questionTextRw: question.questionTextRw || '',
+                questionTextFr: question.questionTextFr || '',
+                explanationEn: question.explanationEn || '',
+                explanationRw: question.explanationRw || '',
+                explanationFr: question.explanationFr || '',
+                questionType: question.questionType || 'MULTIPLE_CHOICE',
+                points: question.points || 1,
+                questionOrder: index + 1,
+                isActive: true,
+                options: question.options?.map((option, optionIndex) => ({
+                    optionTextEn: option.optionTextEn || '',
+                    optionTextRw: option.optionTextRw || '',
+                    optionTextFr: option.optionTextFr || '',
+                    isCorrect: option.isCorrect || false,
+                    optionOrder: optionIndex + 1
+                })) || []
+            }));
+
+            // Create quiz with questions in the exact format backend expects
             const quizCreationData = {
-                quiz: quizData,
-                questions: questionsData
+                quiz: transformedQuizData,
+                questions: transformedQuestions
             };
+
+            console.log('Transformed quiz data:', quizCreationData);
+            console.log('Quiz structure:', {
+                quiz: transformedQuizData,
+                questionsCount: transformedQuestions.length,
+                firstQuestion: transformedQuestions[0]
+            });
 
             await createFullQuiz(quizCreationData);
             toast.success('Quiz created successfully!');
             navigate('/dashboard/education/quizzes');
         } catch (error) {
             console.error('Error creating quiz:', error);
-            toast.error('Failed to create quiz. Please try again.');
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+
+            // Show more specific error message
+            if (error.response?.data?.message) {
+                toast.error(`Quiz creation failed: ${error.response.data.message}`);
+            } else if (error.response?.status === 400) {
+                toast.error('Invalid quiz data. Please check all required fields.');
+            } else {
+                toast.error('Failed to create quiz. Please try again.');
+            }
         } finally {
             setIsSubmitting(false);
         }
-    };
-
-    // Helper functions
-    const addQuestionOption = () => {
-        if (questionFields.length < 6) {
-            appendQuestion({ optionTextEn: '', optionTextRw: '', optionTextFr: '', isCorrect: false });
-        }
-    };
-
-    const removeQuestionOption = (index) => {
-        if (questionFields.length > 2) {
-            removeQuestion(index);
-        }
-    };
-
-    const addTag = () => {
-        if (tagFields.length < 10) {
-            appendTag('');
-        }
-    };
-
-    const removeTag = (index) => {
-        removeTagField(index);
-    };
-
-    const handleCorrectAnswerChange = (index) => {
-        const currentOptions = questionForm.getValues('options');
-        const updatedOptions = currentOptions.map((option, i) => ({
-            ...option,
-            isCorrect: i === index
-        }));
-        questionForm.setValue('options', updatedOptions);
     };
 
     // Articles for quiz creation
@@ -416,11 +192,13 @@ const EducationalContentCreation = () => {
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Create Educational Content
+                            {isEditMode ? 'Edit Educational Article' : 'Create Educational Content'}
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400 mt-2">
                             {contentType === 'article'
-                                ? 'Add new articles to educate about Rwanda\'s heritage'
+                                ? isEditMode
+                                    ? 'Update existing article about Rwanda\'s heritage'
+                                    : 'Add new articles to educate about Rwanda\'s heritage'
                                 : 'Create interactive quizzes to test knowledge about Rwanda\'s heritage'
                             }
                         </p>
@@ -451,878 +229,32 @@ const EducationalContentCreation = () => {
                     </div>
                 </div>
 
-                {/* Article Creation Form */}
+                {/* Article Creation/Edit Form */}
                 {contentType === 'article' && (
-                    <MobileCard>
-                        <MobileCardHeader>
-                            <MobileCardTitle icon={BookOpen}>
-                                Create Educational Article
-                            </MobileCardTitle>
-                        </MobileCardHeader>
-                        <MobileCardContent>
-                            <form onSubmit={articleForm.handleSubmit(handleArticleSubmit)} className="space-y-6">
-                                {/* Title Section */}
-                                <div className="space-y-4">
-                                    <Label className="text-lg font-semibold">Title *</Label>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="titleEn">English *</Label>
-                                            <Input
-                                                id="titleEn"
-                                                placeholder="Enter title in English"
-                                                {...articleForm.register('titleEn')}
-                                                className="w-full"
-                                            />
-                                            {articleForm.formState.errors.titleEn && (
-                                                <span className="text-red-500 text-sm">{articleForm.formState.errors.titleEn.message}</span>
-                                            )}
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="titleRw">Kinyarwanda</Label>
-                                            <Input
-                                                id="titleRw"
-                                                placeholder="Enter title in Kinyarwanda"
-                                                {...articleForm.register('titleRw')}
-                                                className="w-full"
-                                            />
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="titleFr">French</Label>
-                                            <Input
-                                                id="titleFr"
-                                                placeholder="Enter title in French"
-                                                {...articleForm.register('titleFr')}
-                                                className="w-full"
-                                            />
-                                        </FormGroup>
-                                    </div>
-                                </div>
-
-                                {/* Content Section */}
-                                <div className="space-y-4">
-                                    <Label className="text-lg font-semibold">Content *</Label>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="contentEn">English *</Label>
-                                            <TextArea
-                                                id="contentEn"
-                                                placeholder="Write article content in English"
-                                                rows={8}
-                                                {...articleForm.register('contentEn')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('contentEn', e.target.value)}
-                                            />
-                                            {articleForm.formState.errors.contentEn && (
-                                                <span className="text-red-500 text-sm">{articleForm.formState.errors.contentEn.message}</span>
-                                            )}
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="contentRw">Kinyarwanda</Label>
-                                            <TextArea
-                                                id="contentRw"
-                                                placeholder="Write article content in Kinyarwanda"
-                                                rows={8}
-                                                {...articleForm.register('contentRw')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('contentRw', e.target.value)}
-                                            />
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="contentFr">French</Label>
-                                            <TextArea
-                                                id="contentFr"
-                                                placeholder="Write article content in French"
-                                                rows={8}
-                                                {...articleForm.register('contentFr')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('contentFr', e.target.value)}
-                                            />
-                                        </FormGroup>
-                                    </div>
-                                </div>
-
-                                {/* Summary Section */}
-                                <div className="space-y-4">
-                                    <Label className="text-lg font-semibold">Summary *</Label>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="summaryEn">English *</Label>
-                                            <TextArea
-                                                id="summaryEn"
-                                                placeholder="Brief summary of the article"
-                                                rows={3}
-                                                {...articleForm.register('summaryEn')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('summaryEn', e.target.value)}
-                                            />
-                                            {articleForm.formState.errors.summaryEn && (
-                                                <span className="text-red-500 text-sm">{articleForm.formState.errors.summaryEn.message}</span>
-                                            )}
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="summaryRw">Kinyarwanda</Label>
-                                            <TextArea
-                                                id="summaryRw"
-                                                placeholder="Brief summary in Kinyarwanda"
-                                                rows={3}
-                                                {...articleForm.register('summaryRw')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('summaryRw', e.target.value)}
-                                            />
-                                        </FormGroup>
-                                        <FormGroup>
-                                            <Label htmlFor="summaryFr">French</Label>
-                                            <TextArea
-                                                id="summaryFr"
-                                                placeholder="Brief summary in French"
-                                                rows={3}
-                                                {...articleForm.register('summaryFr')}
-                                                className="w-full"
-                                                onChange={(e) => articleForm.setValue('summaryFr', e.target.value)}
-                                            />
-                                        </FormGroup>
-                                    </div>
-                                </div>
-
-                                {/* Basic Settings with Proper Dropdowns */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormGroup>
-                                        <Label>Category *</Label>
-                                        <select
-                                            {...articleForm.register('category')}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        >
-                                            <option value="">Select a category</option>
-                                            {categories.map(cat => (
-                                                <option key={cat} value={cat}>
-                                                    {getCategoryDisplayName(cat)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {articleForm.formState.errors.category && (
-                                            <span className="text-red-500 text-sm">{articleForm.formState.errors.category.message}</span>
-                                        )}
-                                    </FormGroup>
-
-                                    <FormGroup>
-                                        <Label>Difficulty Level *</Label>
-                                        <select
-                                            {...articleForm.register('difficultyLevel')}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        >
-                                            <option value="">Select difficulty level</option>
-                                            {difficultyLevels.map(level => (
-                                                <option key={level} value={level}>
-                                                    {getDifficultyDisplayName(level)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {articleForm.formState.errors.difficultyLevel && (
-                                            <span className="text-red-500 text-sm">{articleForm.formState.errors.difficultyLevel.message}</span>
-                                        )}
-                                    </FormGroup>
-
-                                    <FormGroup>
-                                        <Label htmlFor="estimatedReadTimeMinutes">Read Time (minutes) *</Label>
-                                        <Input
-                                            id="estimatedReadTimeMinutes"
-                                            type="number"
-                                            min="1"
-                                            max="480"
-                                            placeholder="15"
-                                            {...articleForm.register('estimatedReadTimeMinutes', { valueAsNumber: true })}
-                                            className="w-full"
-                                        />
-                                        {articleForm.formState.errors.estimatedReadTimeMinutes && (
-                                            <span className="text-red-500 text-sm">{articleForm.formState.errors.estimatedReadTimeMinutes.message}</span>
-                                        )}
-                                    </FormGroup>
-                                </div>
-
-                                {/* Tags Section */}
-                                <FormGroup>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Label>Tags</Label>
-                                        <button
-                                            type="button"
-                                            onClick={addTag}
-                                            disabled={tagFields.length >= 10}
-                                            className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
-                                        >
-                                            <Plus className="w-4 h-4 inline mr-1" />
-                                            Add Tag
-                                        </button>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {tagFields.map((field, index) => (
-                                            <div key={field.id} className="flex gap-2">
-                                                <Input
-                                                    placeholder={`Tag ${index + 1}`}
-                                                    {...articleForm.register(`tags.${index}`)}
-                                                    className="flex-1"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeTag(index)}
-                                                    disabled={tagFields.length <= 1}
-                                                    className="p-2 text-red-500 hover:text-red-700 disabled:text-gray-400"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Tags help users find your content more easily (max 10 tags)
-                                    </p>
-                                </FormGroup>
-
-                                {/* Public/Private Toggle */}
-                                <FormGroup>
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            type="checkbox"
-                                            id="isPublic"
-                                            {...articleForm.register('isPublic')}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <Label htmlFor="isPublic">Make this article public</Label>
-                                    </div>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Public articles are visible to all users, private ones require authentication
-                                    </p>
-                                </FormGroup>
-
-                                {/* Enhanced Content Fields */}
-                                <div className="border-t pt-6">
-                                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                                        Enhanced Content Options
-                                    </h3>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="featuredImage">Featured Image URL</Label>
-                                            <Input
-                                                id="featuredImage"
-                                                placeholder="https://example.com/image.jpg"
-                                                {...articleForm.register('featuredImage')}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Optional: Add a featured image to make your article more engaging
-                                            </p>
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label htmlFor="youtubeVideoUrl">YouTube Video URL</Label>
-                                            <Input
-                                                id="youtubeVideoUrl"
-                                                placeholder="https://www.youtube.com/watch?v=..."
-                                                {...articleForm.register('youtubeVideoUrl')}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Optional: Link to a YouTube video for additional content
-                                            </p>
-                                        </FormGroup>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                        <FormGroup>
-                                            <Label htmlFor="relatedArtifactId">Related Artifact ID</Label>
-                                            <Input
-                                                id="relatedArtifactId"
-                                                type="number"
-                                                placeholder="123"
-                                                {...articleForm.register('relatedArtifactId', { valueAsNumber: true })}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Optional: Link to a related artifact
-                                            </p>
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label htmlFor="relatedHeritageSiteId">Related Heritage Site ID</Label>
-                                            <Input
-                                                id="relatedHeritageSiteId"
-                                                type="number"
-                                                placeholder="456"
-                                                {...articleForm.register('relatedHeritageSiteId', { valueAsNumber: true })}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Optional: Link to a related heritage site
-                                            </p>
-                                        </FormGroup>
-                                    </div>
-                                </div>
-
-                                {/* Form Actions */}
-                                <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                                    <MobileButton
-                                        variant="outline"
-                                        onClick={() => navigate('/dashboard/education/articles')}
-                                        className="sm:mr-auto"
-                                    >
-                                        <ArrowLeft className="w-4 h-4 mr-2" />
-                                        Back to Articles
-                                    </MobileButton>
-
-                                    {/* Test Button for Debugging */}
-                                    <MobileButton
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            console.log('🧪 Testing basic API connectivity...');
-                                            // Test basic GET request
-                                            axios.get('/api/education/articles')
-                                                .then(response => {
-                                                    console.log('✅ GET request successful:', response.data);
-                                                    toast.success('API connectivity test successful!');
-                                                })
-                                                .catch(error => {
-                                                    console.error('❌ GET request failed:', error);
-                                                    toast.error('API connectivity test failed');
-                                                });
-                                        }}
-                                        className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                                    >
-                                        🧪 Test API
-                                    </MobileButton>
-
-                                    {/* Test Form Submission */}
-                                    <MobileButton
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                            console.log('🧪 Testing form submission manually...');
-                                            console.log('📝 Form values:', articleForm.getValues());
-                                            console.log('🔍 Form errors:', articleForm.formState.errors);
-                                            console.log('🔍 Form is valid:', articleForm.formState.isValid);
-
-                                            // Try to manually call the submit handler
-                                            const testData = {
-                                                titleEn: 'Test Title',
-                                                contentEn: 'Test content with more than 10 characters',
-                                                summaryEn: 'Test summary',
-                                                category: 'CULTURAL_PRACTICES',
-                                                difficultyLevel: 'BEGINNER',
-                                                estimatedReadTimeMinutes: 5
-                                            };
-
-                                            console.log('🧪 Manually calling handleArticleSubmit with test data...');
-                                            handleArticleSubmit(testData);
-                                        }}
-                                        className="bg-green-500 hover:bg-green-600 text-white"
-                                    >
-                                        🧪 Test Form Submit
-                                    </MobileButton>
-
-                                    <MobileButton
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        <Save className="w-4 h-4 mr-2" />
-                                        {isSubmitting ? 'Creating...' : 'Create Article'}
-                                    </MobileButton>
-                                </div>
-                            </form>
-                        </MobileCardContent>
-                    </MobileCard>
+                    <ArticleCreationForm
+                        isEditMode={isEditMode}
+                        editingArticle={editingArticle}
+                        onSuccess={() => navigate('/dashboard/education/articles')}
+                    />
                 )}
 
                 {/* Quiz Creation Form */}
                 {contentType === 'quiz' && (
                     <div className="space-y-6">
                         {/* Quiz Basic Info */}
-                        <MobileCard>
-                            <MobileCardHeader>
-                                <MobileCardTitle icon={HelpCircle}>Quiz Information</MobileCardTitle>
-                            </MobileCardHeader>
-                            <MobileCardContent>
-                                <form onSubmit={quizForm.handleSubmit(handleQuizSubmit)} className="space-y-6">
-                                    {/* Title Section */}
-                                    <div className="space-y-4">
-                                        <Label className="text-lg font-semibold">Title *</Label>
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-titleEn">English *</Label>
-                                                <Input
-                                                    id="quiz-titleEn"
-                                                    placeholder="Enter quiz title in English"
-                                                    {...quizForm.register('titleEn')}
-                                                    className="w-full"
-                                                />
-                                                {quizForm.formState.errors.titleEn && (
-                                                    <span className="text-red-500 text-sm">{quizForm.formState.errors.titleEn.message}</span>
-                                                )}
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-titleRw">Kinyarwanda</Label>
-                                                <Input
-                                                    id="quiz-titleRw"
-                                                    placeholder="Enter quiz title in Kinyarwanda"
-                                                    {...quizForm.register('titleRw')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-titleFr">French</Label>
-                                                <Input
-                                                    id="quiz-titleFr"
-                                                    placeholder="Enter quiz title in French"
-                                                    {...quizForm.register('titleFr')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                        </div>
-                                    </div>
-
-                                    {/* Description Section */}
-                                    <div className="space-y-4">
-                                        <Label className="text-lg font-semibold">Description *</Label>
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-descriptionEn">English *</Label>
-                                                <TextArea
-                                                    id="quiz-descriptionEn"
-                                                    placeholder="Describe what this quiz covers"
-                                                    rows={4}
-                                                    {...quizForm.register('descriptionEn')}
-                                                    className="w-full"
-                                                />
-                                                {quizForm.formState.errors.descriptionEn && (
-                                                    <span className="text-sm text-red-500">{quizForm.formState.errors.descriptionEn.message}</span>
-                                                )}
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-descriptionRw">Kinyarwanda</Label>
-                                                <TextArea
-                                                    id="quiz-descriptionRw"
-                                                    placeholder="Describe what this quiz covers in Kinyarwanda"
-                                                    rows={4}
-                                                    {...quizForm.register('descriptionRw')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-descriptionFr">French</Label>
-                                                <TextArea
-                                                    id="quiz-descriptionFr"
-                                                    placeholder="Describe what this quiz covers in French"
-                                                    rows={4}
-                                                    {...quizForm.register('descriptionFr')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                        </div>
-                                    </div>
-
-                                    {/* Quiz Settings with Proper Dropdowns */}
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="quiz-articleId">Related Article *</Label>
-                                            <Select
-                                                id="quiz-articleId"
-                                                {...quizForm.register('articleId', { valueAsNumber: true })}
-                                                className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                                                required
-                                            >
-                                                <option value="">Select an article</option>
-                                                {articles.map(article => (
-                                                    <option key={article.id} value={article.id}>
-                                                        {article.titleEn || article.title}
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                            {quizForm.formState.errors.articleId && (
-                                                <span className="text-sm text-red-500">{quizForm.formState.errors.articleId.message}</span>
-                                            )}
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label>Category *</Label>
-                                            <select
-                                                {...quizForm.register('category')}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            >
-                                                <option value="">Select a category</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat} value={cat}>
-                                                        {getCategoryDisplayName(cat)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {quizForm.formState.errors.category && (
-                                                <span className="text-sm text-red-500">{quizForm.formState.errors.category.message}</span>
-                                            )}
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label>Difficulty Level *</Label>
-                                            <select
-                                                {...quizForm.register('difficultyLevel')}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            >
-                                                <option value="">Select difficulty level</option>
-                                                {difficultyLevels.map(level => (
-                                                    <option key={level} value={level}>
-                                                        {getDifficultyDisplayName(level)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {quizForm.formState.errors.difficultyLevel && (
-                                                <span className="text-sm text-red-500">{quizForm.formState.errors.difficultyLevel.message}</span>
-                                            )}
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label htmlFor="quiz-tags">Tags</Label>
-                                            <Input
-                                                id="quiz-tags"
-                                                placeholder="Enter tags separated by commas"
-                                                {...quizForm.register('tags')}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Tags help users find your quiz more easily
-                                            </p>
-                                        </FormGroup>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <FormGroup>
-                                            <Label htmlFor="quiz-passingScorePercentage">Passing Score (%) *</Label>
-                                            <Input
-                                                id="quiz-passingScorePercentage"
-                                                type="number"
-                                                min="1"
-                                                max="100"
-                                                placeholder="70"
-                                                {...quizForm.register('passingScorePercentage', { valueAsNumber: true })}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Minimum score required to pass the quiz
-                                            </p>
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label htmlFor="quiz-timeLimitMinutes">Time Limit (minutes) *</Label>
-                                            <Input
-                                                id="quiz-timeLimitMinutes"
-                                                type="number"
-                                                min="1"
-                                                max="480"
-                                                placeholder="30"
-                                                {...quizForm.register('timeLimitMinutes', { valueAsNumber: true })}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Maximum time allowed to complete the quiz
-                                            </p>
-                                        </FormGroup>
-
-                                        <FormGroup>
-                                            <Label htmlFor="quiz-maxAttempts">Max Attempts *</Label>
-                                            <Input
-                                                id="quiz-maxAttempts"
-                                                type="number"
-                                                min="1"
-                                                max="10"
-                                                placeholder="3"
-                                                {...quizForm.register('maxAttempts', { valueAsNumber: true })}
-                                                className="w-full"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Maximum number of attempts allowed
-                                            </p>
-                                        </FormGroup>
-                                    </div>
-
-                                    {/* Public/Private Toggle */}
-                                    <FormGroup>
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id="quiz-isPublic"
-                                                {...quizForm.register('isPublic')}
-                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <Label htmlFor="quiz-isPublic">Make this quiz public</Label>
-                                        </div>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            Public quizzes are visible to all users, private ones require authentication
-                                        </p>
-                                    </FormGroup>
-
-                                    {/* Enhanced Content Fields */}
-                                    <div className="border-t pt-6">
-                                        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                                            Enhanced Content Options
-                                        </h3>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-featuredImage">Featured Image URL</Label>
-                                                <Input
-                                                    id="quiz-featuredImage"
-                                                    placeholder="https://example.com/image.jpg"
-                                                    {...quizForm.register('featuredImage')}
-                                                    className="w-full"
-                                                />
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    Optional: Add a featured image to make your quiz more engaging
-                                                </p>
-                                            </FormGroup>
-
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-youtubeVideoUrl">YouTube Video URL</Label>
-                                                <Input
-                                                    id="quiz-youtubeVideoUrl"
-                                                    placeholder="https://www.youtube.com/watch?v=..."
-                                                    {...quizForm.register('youtubeVideoUrl')}
-                                                    className="w-full"
-                                                />
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    Optional: Link to a YouTube video for additional context
-                                                </p>
-                                            </FormGroup>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-relatedArtifactId">Related Artifact ID</Label>
-                                                <Input
-                                                    id="quiz-relatedArtifactId"
-                                                    type="number"
-                                                    placeholder="123"
-                                                    {...quizForm.register('relatedArtifactId', { valueAsNumber: true })}
-                                                    className="w-full"
-                                                />
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    Optional: Link to a related artifact
-                                                </p>
-                                            </FormGroup>
-
-                                            <FormGroup>
-                                                <Label htmlFor="quiz-relatedHeritageSiteId">Related Heritage Site ID</Label>
-                                                <Input
-                                                    id="quiz-relatedHeritageSiteId"
-                                                    type="number"
-                                                    placeholder="456"
-                                                    {...quizForm.register('relatedHeritageSiteId', { valueAsNumber: true })}
-                                                    className="w-full"
-                                                />
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    Optional: Link to a related heritage site
-                                                </p>
-                                            </FormGroup>
-                                        </div>
-                                    </div>
-
-                                    {/* Quiz Form Actions */}
-                                    <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                                        <MobileButton
-                                            variant="outline"
-                                            onClick={() => navigate('/dashboard/education/quizzes')}
-                                            className="sm:mr-auto"
-                                        >
-                                            <ArrowLeft className="w-4 h-4 mr-2" />
-                                            Back to Quizzes
-                                        </MobileButton>
-                                        <MobileButton
-                                            type="submit"
-                                            disabled={isSubmitting}
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            <Save className="w-4 h-4 mr-2" />
-                                            {isSubmitting ? 'Creating...' : 'Create Quiz'}
-                                        </MobileButton>
-                                    </div>
-                                </form>
-                            </MobileCardContent>
-                        </MobileCard>
+                        <QuizInformationForm
+                            articles={articles}
+                            onSubmit={handleQuizSubmit}
+                            isSubmitting={isSubmitting}
+                        />
 
                         {/* Quiz Questions Builder */}
-                        <MobileCard>
-                            <MobileCardHeader>
-                                <MobileCardTitle icon={HelpCircle}>Quiz Questions</MobileCardTitle>
-                            </MobileCardHeader>
-                            <MobileCardContent>
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-semibold">Question 1</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-500">Question Type:</span>
-                                            <Select
-                                                {...questionForm.register('questionType')}
-                                                className="w-32 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                                            >
-                                                {questionTypes.map(type => (
-                                                    <option key={type.value} value={type.value}>
-                                                        {type.label}
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                            <span className="text-sm text-gray-500">Points:</span>
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                max="10"
-                                                {...questionForm.register('points', { valueAsNumber: true })}
-                                                className="w-20"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Question Text */}
-                                    <div className="space-y-4">
-                                        <Label className="text-lg font-semibold">Question Text *</Label>
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                            <FormGroup>
-                                                <Label htmlFor="questionTextEn">English *</Label>
-                                                <TextArea
-                                                    id="questionTextEn"
-                                                    placeholder="Enter your question in English"
-                                                    rows={3}
-                                                    {...questionForm.register('questionTextEn')}
-                                                    className="w-full"
-                                                />
-                                                {questionForm.formState.errors.questionTextEn && (
-                                                    <span className="text-red-500 text-sm">{questionForm.formState.errors.questionTextEn.message}</span>
-                                                )}
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="questionTextRw">Kinyarwanda</Label>
-                                                <TextArea
-                                                    id="questionTextRw"
-                                                    placeholder="Enter your question in Kinyarwanda"
-                                                    rows={3}
-                                                    {...questionForm.register('questionTextRw')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="questionTextFr">French</Label>
-                                                <TextArea
-                                                    id="questionTextFr"
-                                                    placeholder="Enter your question in French"
-                                                    rows={3}
-                                                    {...questionForm.register('questionTextFr')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                        </div>
-                                    </div>
-
-                                    {/* Question Options */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-lg font-semibold">Answer Options</Label>
-                                            <button
-                                                type="button"
-                                                onClick={addQuestionOption}
-                                                disabled={questionFields.length >= 6}
-                                                className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
-                                            >
-                                                <Plus className="w-4 h-4 inline mr-1" />
-                                                Add Option
-                                            </button>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            {questionFields.map((field, index) => (
-                                                <div key={field.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                                                    <div className="flex items-center">
-                                                        <input
-                                                            type="radio"
-                                                            name="correctAnswer"
-                                                            checked={questionForm.watch(`options.${index}.isCorrect`)}
-                                                            onChange={() => handleCorrectAnswerChange(index)}
-                                                            className="mr-2"
-                                                        />
-                                                        <span className="text-sm font-medium text-gray-600">
-                                                            Option {index + 1}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2">
-                                                        <Input
-                                                            placeholder="English"
-                                                            {...questionForm.register(`options.${index}.optionTextEn`)}
-                                                            className="w-full"
-                                                        />
-                                                        <Input
-                                                            placeholder="Kinyarwanda"
-                                                            {...questionForm.register(`options.${index}.optionTextRw`)}
-                                                            className="w-full"
-                                                        />
-                                                        <Input
-                                                            placeholder="French"
-                                                            {...questionForm.register(`options.${index}.optionTextFr`)}
-                                                            className="w-full"
-                                                        />
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeQuestionOption(index)}
-                                                        disabled={questionFields.length <= 2}
-                                                        className="p-1 text-red-500 hover:text-red-700 disabled:text-gray-400"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {questionForm.formState.errors.options && (
-                                            <span className="text-red-500 text-sm">{questionForm.formState.errors.options.message}</span>
-                                        )}
-                                    </div>
-
-                                    {/* Explanation */}
-                                    <div className="space-y-4">
-                                        <Label className="text-lg font-semibold">Explanation (Optional)</Label>
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                            <FormGroup>
-                                                <Label htmlFor="explanationEn">English</Label>
-                                                <TextArea
-                                                    id="explanationEn"
-                                                    placeholder="Explain the correct answer"
-                                                    rows={2}
-                                                    {...questionForm.register('explanationEn')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="explanationRw">Kinyarwanda</Label>
-                                                <TextArea
-                                                    id="explanationRw"
-                                                    placeholder="Explain the correct answer in Kinyarwanda"
-                                                    rows={2}
-                                                    {...questionForm.register('explanationRw')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                            <FormGroup>
-                                                <Label htmlFor="explanationFr">French</Label>
-                                                <TextArea
-                                                    id="explanationFr"
-                                                    placeholder="Explain the correct answer in French"
-                                                    rows={2}
-                                                    {...questionForm.register('explanationFr')}
-                                                    className="w-full"
-                                                />
-                                            </FormGroup>
-                                        </div>
-                                    </div>
-                                </div>
-                            </MobileCardContent>
-                        </MobileCard>
+                        <QuizQuestionsBuilder
+                            onQuestionsChange={setQuestions}
+                            questions={questions}
+                            currentQuestionIndex={currentQuestionIndex}
+                            setCurrentQuestionIndex={setCurrentQuestionIndex}
+                        />
                     </div>
                 )}
             </div>

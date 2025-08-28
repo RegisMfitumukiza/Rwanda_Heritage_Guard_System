@@ -29,6 +29,15 @@ import lombok.extern.slf4j.Slf4j;
 import com.rwandaheritage.heritageguard.model.User;
 import com.rwandaheritage.heritageguard.model.User.Role;
 import com.rwandaheritage.heritageguard.service.UserService;
+import com.rwandaheritage.heritageguard.model.Artifact;
+
+
+import com.rwandaheritage.heritageguard.model.ArtifactMedia;
+import com.rwandaheritage.heritageguard.repository.ArtifactRepository;
+
+
+import com.rwandaheritage.heritageguard.repository.ArtifactMediaRepository;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -39,6 +48,9 @@ public class HeritageSiteService {
     private final SiteChangeHistoryService siteChangeHistoryService;
     private final HeritageSiteManagerRepository heritageSiteManagerRepository;
     private final UserService userService;
+    private final ArtifactRepository artifactRepository;
+
+    private final ArtifactMediaRepository artifactMediaRepository;
 
     @Autowired
     public HeritageSiteService(HeritageSiteRepository heritageSiteRepository,
@@ -46,13 +58,17 @@ public class HeritageSiteService {
                                HeritageSiteManagerService heritageSiteManagerService,
                                SiteChangeHistoryService siteChangeHistoryService,
                                HeritageSiteManagerRepository heritageSiteManagerRepository,
-                               UserService userService) {
+                               UserService userService,
+                               ArtifactRepository artifactRepository,
+                               ArtifactMediaRepository artifactMediaRepository) {
         this.heritageSiteRepository = heritageSiteRepository;
         this.siteStatusHistoryRepository = siteStatusHistoryRepository;
         this.heritageSiteManagerService = heritageSiteManagerService;
         this.siteChangeHistoryService = siteChangeHistoryService;
         this.heritageSiteManagerRepository = heritageSiteManagerRepository;
         this.userService = userService;
+        this.artifactRepository = artifactRepository;
+        this.artifactMediaRepository = artifactMediaRepository;
     }
 
     @Transactional
@@ -1069,4 +1085,133 @@ public class HeritageSiteService {
         return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_HERITAGE_MANAGER"));
     }
-} 
+
+        /**
+     * Get all artifacts for a specific heritage site with full details
+     */
+    public Map<String, Object> getSiteArtifacts(Long siteId, String language) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Verify the heritage site exists
+            HeritageSite site = heritageSiteRepository.findById(siteId)
+                .orElseThrow(() -> new RuntimeException("Heritage site not found with ID: " + siteId));
+            
+            log.info("Found heritage site: {} - {}", siteId, site.getNameEn());
+            
+            // Get artifacts for this site
+            List<Artifact> artifacts = artifactRepository.findByHeritageSiteId(siteId);
+            
+            if (artifacts == null) {
+                log.warn("No artifacts found for site: {}", siteId);
+                artifacts = new ArrayList<>();
+            }
+            
+            log.info("Found {} artifacts for site: {}", artifacts.size(), siteId);
+            
+            List<Map<String, Object>> artifactData = artifacts.stream()
+                .map(artifact -> {
+                    Map<String, Object> artifactMap = new HashMap<>();
+                    artifactMap.put("id", artifact.getId());
+                    artifactMap.put("category", artifact.getCategory());
+                    artifactMap.put("isPublic", artifact.getIsPublic());
+                    
+                    // Get authentication status and details
+                    String authStatus = "PENDING_AUTHENTICATION"; // Default
+                    List<Map<String, Object>> authentications = new ArrayList<>();
+                    if (artifact.getAuthentications() != null && !artifact.getAuthentications().isEmpty()) {
+                        authStatus = "AUTHENTICATED";
+                        authentications = artifact.getAuthentications().stream()
+                            .map(auth -> {
+                                Map<String, Object> authMap = new HashMap<>();
+                                authMap.put("id", auth.getId());
+                                authMap.put("status", auth.getStatus());
+                                authMap.put("date", auth.getDate());
+                                authMap.put("documentation", auth.getDocumentation());
+                                authMap.put("documentFilePath", auth.getDocumentFilePath());
+                                return authMap;
+                            })
+                            .collect(Collectors.toList());
+                    }
+                    artifactMap.put("authenticationStatus", authStatus);
+                    artifactMap.put("authentications", authentications);
+                    
+                    // Get names in multiple languages
+                    List<Map<String, Object>> names = new ArrayList<>();
+                    if (artifact.getName() != null) {
+                        artifact.getName().forEach((lang, nameText) -> {
+                            Map<String, Object> nameMap = new HashMap<>();
+                            nameMap.put("languageCode", lang);
+                            nameMap.put("nameText", nameText);
+                            nameMap.put("isPrimary", "en".equals(lang)); // Assume English is primary
+                            names.add(nameMap);
+                        });
+                    }
+                    artifactMap.put("names", names);
+                    
+                    // Get descriptions in multiple languages
+                    List<Map<String, Object>> descriptions = new ArrayList<>();
+                    if (artifact.getDescription() != null) {
+                        artifact.getDescription().forEach((lang, descText) -> {
+                            Map<String, Object> descMap = new HashMap<>();
+                            descMap.put("languageCode", lang);
+                            descMap.put("descriptionText", descText);
+                            descMap.put("isPrimary", "en".equals(lang)); // Assume English is primary
+                            descriptions.add(descMap);
+                        });
+                    }
+                    artifactMap.put("descriptions", descriptions);
+                    
+                    // Get media files
+                    List<Map<String, Object>> media = new ArrayList<>();
+                    if (artifact.getMedia() != null) {
+                        media = artifact.getMedia().stream()
+                            .map(mediaItem -> {
+                                Map<String, Object> mediaMap = new HashMap<>();
+                                mediaMap.put("id", mediaItem.getId()); // Add the ID field
+                                mediaMap.put("filePath", mediaItem.getFilePath());
+                                mediaMap.put("isPublic", mediaItem.getIsPublic());
+                                mediaMap.put("description", mediaItem.getDescription());
+                                return mediaMap;
+                            })
+                            .collect(Collectors.toList());
+                    }
+                    artifactMap.put("media", media);
+                    
+                    // Get provenance records
+                    List<Map<String, Object>> provenanceRecords = new ArrayList<>();
+                    if (artifact.getProvenanceRecords() != null && !artifact.getProvenanceRecords().isEmpty()) {
+                        provenanceRecords = artifact.getProvenanceRecords().stream()
+                            .map(provenance -> {
+                                Map<String, Object> provenanceMap = new HashMap<>();
+                                provenanceMap.put("id", provenance.getId());
+                                provenanceMap.put("acquisitionDate", provenance.getAcquisitionDate());
+                                provenanceMap.put("acquisitionMethod", provenance.getAcquisitionMethod());
+                                provenanceMap.put("previousOwner", provenance.getPreviousOwner());
+                                provenanceMap.put("provenanceNotes", provenance.getProvenanceNotes());
+                                provenanceMap.put("documentFilePath", provenance.getDocumentFilePath());
+                                return provenanceMap;
+                            })
+                            .collect(Collectors.toList());
+                    }
+                    artifactMap.put("provenanceRecords", provenanceRecords);
+                    
+                    return artifactMap;
+                })
+                .collect(Collectors.toList());
+            
+            result.put("artifacts", artifactData);
+            result.put("siteId", siteId);
+            result.put("siteName", site.getNameEn());
+            result.put("totalCount", artifactData.size());
+            
+            log.info("Successfully processed {} artifacts for site: {}", artifactData.size(), siteId);
+            
+        } catch (Exception e) {
+            log.error("Error processing artifacts for site {}: {}", siteId, e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch artifacts for site: " + siteId, e);
+        }
+        
+        return result;
+    }
+}

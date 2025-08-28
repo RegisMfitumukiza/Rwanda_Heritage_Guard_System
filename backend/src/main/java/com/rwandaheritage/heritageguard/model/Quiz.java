@@ -55,6 +55,12 @@ public class Quiz {
     @Column(name = "tags", length = 500)
     private String tags; // Comma-separated tags like "heritage,history,culture"
     
+    @Column(name = "difficulty_level", length = 50)
+    private String difficultyLevel; // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+    
+    @Column(name = "category", length = 100)
+    private String category; // History, Culture, Archaeology, etc.
+    
     // Audit fields
     private String createdBy;
     private LocalDateTime createdDate;

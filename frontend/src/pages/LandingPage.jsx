@@ -341,7 +341,7 @@ const LandingPage = () => {
             <HeritageSitesSection isVisible={showHeritageSites} />
           </ComponentErrorBoundary>
         </section>
-{/* 
+        {/* 
         <section id="featured-sites">
           <ComponentErrorBoundary componentName="Featured Sites Section">
             <FeaturedSitesSection />
@@ -350,12 +350,7 @@ const LandingPage = () => {
 
         <section id="education">
           <ComponentErrorBoundary componentName="Educational Section">
-            <EducationalSection
-              onContentClick={(content) => {
-                // Navigate to public educational content page
-                navigate('/education');
-              }}
-            />
+            <EducationalSection />
           </ComponentErrorBoundary>
         </section>
 

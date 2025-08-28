@@ -378,9 +378,9 @@ public class QuizService {
         existingOption.setOptionTextEn(optionDTO.getOptionTextEn());
         existingOption.setOptionTextRw(optionDTO.getOptionTextRw());
         existingOption.setOptionTextFr(optionDTO.getOptionTextFr());
-        existingOption.setIsCorrect(optionDTO.getIsCorrect());
+        existingOption.setCorrect(optionDTO.getIsCorrect());
         existingOption.setOptionOrder(optionDTO.getOptionOrder());
-        existingOption.setIsActive(optionDTO.getIsActive());
+        existingOption.setActive(optionDTO.getIsActive());
         
         // Update audit fields
         String updatedBy = getCurrentUsername();
@@ -399,7 +399,7 @@ public class QuizService {
         enforceCanEdit();
         
         // Soft delete
-        option.setIsActive(false);
+        option.setActive(false);
         option.setUpdatedBy(getCurrentUsername());
         option.setUpdatedDate(LocalDateTime.now());
         

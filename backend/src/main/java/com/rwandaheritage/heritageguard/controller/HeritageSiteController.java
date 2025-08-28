@@ -1046,6 +1046,25 @@ public class HeritageSiteController {
         }
     }
 
+        /**
+     * Get all artifacts for a specific heritage site
+     * Public endpoint: No authentication required for viewing artifacts
+     */
+    @GetMapping("/{siteId}/artifacts")
+    public ResponseEntity<Map<String, Object>> getSiteArtifacts(
+        @PathVariable Long siteId,
+        @RequestParam(defaultValue = "en") String language
+    ) {
+        try {
+            log.info("Fetching artifacts for heritage site: {} with language: {}", siteId, language);
+            Map<String, Object> artifacts = heritageSiteService.getSiteArtifacts(siteId, language);
+            return ResponseEntity.ok(artifacts);
+        } catch (Exception e) {
+            log.error("Error fetching artifacts for site {}: {}", siteId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     /**
      * Test endpoint to debug heritage site access
      */

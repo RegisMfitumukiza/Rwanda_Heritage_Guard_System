@@ -10,7 +10,7 @@ public class QuizQuestionDTO {
     
     private Long id;
     
-    @NotNull(message = "Quiz ID is required")
+    // Quiz ID is optional during creation, will be set automatically
     private Long quizId;
     
     @NotBlank(message = "Question text in English is required")

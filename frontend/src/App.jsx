@@ -6,6 +6,8 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/error/ErrorBoundary';
 import AppRoutes from './routes/AppRoutes';
+import SessionRecoveryIndicator from './components/ui/SessionRecoveryIndicator';
+
 import './index.css';
 
 function App() {
@@ -21,6 +23,7 @@ function App() {
           <LanguageProvider>
             <AuthProvider>
               <div className="App">
+                <SessionRecoveryIndicator />
                 <Toaster
                   position="top-right"
                   toastOptions={{

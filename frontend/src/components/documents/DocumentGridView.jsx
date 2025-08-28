@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-    Grid3X3,
+    Grid,
     List,
     SortAsc,
     SortDesc,
@@ -339,7 +339,7 @@ const DocumentGridView = ({
                             size="sm"
                             onClick={() => onSortChange && onSortChange('grid', sortBy, sortOrder)}
                         >
-                            <Grid3X3 className="w-4 h-4" />
+                            <Grid className="w-4 h-4" />
                         </Button>
                         <Button
                             variant={viewMode === 'list' ? 'default' : 'outline'}
