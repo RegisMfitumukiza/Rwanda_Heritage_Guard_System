@@ -1178,22 +1178,22 @@ public class HeritageSiteService {
                     }
                     artifactMap.put("media", media);
                     
-                    // Get provenance records
-                    List<Map<String, Object>> provenanceRecords = new ArrayList<>();
-                    if (artifact.getProvenanceRecords() != null && !artifact.getProvenanceRecords().isEmpty()) {
-                        provenanceRecords = artifact.getProvenanceRecords().stream()
-                            .map(provenance -> {
-                                Map<String, Object> provenanceMap = new HashMap<>();
-                                provenanceMap.put("id", provenance.getId());
-                                provenanceMap.put("acquisitionDate", provenance.getAcquisitionDate());
-                                provenanceMap.put("acquisitionMethod", provenance.getAcquisitionMethod());
-                                provenanceMap.put("previousOwner", provenance.getPreviousOwner());
-                                provenanceMap.put("provenanceNotes", provenance.getProvenanceNotes());
-                                provenanceMap.put("documentFilePath", provenance.getDocumentFilePath());
-                                return provenanceMap;
-                            })
-                            .collect(Collectors.toList());
-                    }
+                                               // Get provenance records
+                           List<Map<String, Object>> provenanceRecords = new ArrayList<>();
+                           if (artifact.getProvenanceRecords() != null && !artifact.getProvenanceRecords().isEmpty()) {
+                               provenanceRecords = artifact.getProvenanceRecords().stream()
+                                   .map(provenance -> {
+                                       Map<String, Object> provenanceMap = new HashMap<>();
+                                       provenanceMap.put("id", provenance.getId());
+                                       provenanceMap.put("eventDate", provenance.getEventDate());
+                                       provenanceMap.put("history", provenance.getHistory());
+                                       provenanceMap.put("previousOwner", provenance.getPreviousOwner());
+                                       provenanceMap.put("newOwner", provenance.getNewOwner());
+                                       provenanceMap.put("documentFilePath", provenance.getDocumentFilePath());
+                                       return provenanceMap;
+                                   })
+                                   .collect(Collectors.toList());
+                           }
                     artifactMap.put("provenanceRecords", provenanceRecords);
                     
                     return artifactMap;

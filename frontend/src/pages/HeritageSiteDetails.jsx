@@ -1354,205 +1354,183 @@ const HeritageSiteDetails = () => {
                 </div>
             </Modal>
 
-            {/* Artifact Detail Modal */}
+            {/* Artifact Detail Modal - Minimal Design */}
             <Modal
                 isOpen={showArtifactModal}
                 onClose={() => setShowArtifactModal(false)}
-                size="xl"
+                size="2xl"
                 className="p-0"
             >
                 {selectedArtifact && (
-                    <div className="relative">
+                    <div className="relative max-h-[90vh] overflow-y-auto">
                         {/* Close Button */}
                         <button
                             onClick={() => setShowArtifactModal(false)}
-                            className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                            className="absolute top-3 right-3 z-10 bg-black bg-opacity-70 text-white p-2 rounded-full hover:bg-opacity-90 transition-all"
                         >
-                            <X size={20} />
+                            <X size={18} />
                         </button>
 
-                        {/* Artifact Content */}
-                        <div className="w-full bg-white dark:bg-gray-800">
-                            {/* Hero Image */}
-                            <div className="relative h-96 bg-gray-100 dark:bg-gray-700">
-                                <LazyImage
-                                    src={getArtifactPrimaryImage(selectedArtifact)}
-                                    alt={getArtifactName(selectedArtifact)}
-                                    className="w-full h-full object-cover"
-                                />
+                        {/* Compact Header */}
+                        <div className="relative h-48 bg-gradient-to-br from-gray-800 to-gray-900">
+                            <LazyImage
+                                src={getArtifactPrimaryImage(selectedArtifact)}
+                                alt={getArtifactName(selectedArtifact)}
+                                className="w-full h-full object-cover opacity-70"
+                            />
 
-                                {/* Authentication Status Badge */}
-                                <div className="absolute top-4 left-4">
-                                    {(() => {
-                                        const authStatus = getAuthStatusInfo(selectedArtifact.authenticationStatus);
-                                        const StatusIcon = authStatus.icon;
-                                        return (
-                                            <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium ${authStatus.bgColor} ${authStatus.color} border ${authStatus.borderColor}`}>
-                                                <StatusIcon size={16} />
-                                                {authStatus.label}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-
-                            {/* Artifact Details */}
-                            <div className="p-8">
-                                <div className="max-w-4xl mx-auto">
-                                    {/* Title and Basic Info */}
-                                    <div className="mb-8">
-                                        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                                            {getArtifactName(selectedArtifact)}
-                                        </h2>
-                                        <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                                            {getArtifactDescription(selectedArtifact)}
-                                        </p>
-                                    </div>
-
-                                    {/* Artifact Information Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                                        <div>
-                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Artifact Details</h3>
-                                            <div className="space-y-3">
-                                                {selectedArtifact.category && (
-                                                    <div className="flex items-center gap-3">
-                                                        <Shield className="w-5 h-5 text-gray-400" />
-                                                        <div>
-                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Category</span>
-                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.category}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {selectedArtifact.material && (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-5 h-5 bg-gray-400 rounded-full"></div>
-                                                        <div>
-                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Material</span>
-                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.material}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {selectedArtifact.estimatedAge && (
-                                                    <div className="flex items-center gap-3">
-                                                        <ClockIcon className="w-5 h-5 text-gray-400" />
-                                                        <div>
-                                                            <span className="text-sm text-gray-500 dark:text-gray-400">Estimated Age</span>
-                                                            <p className="text-gray-900 dark:text-gray-100">{selectedArtifact.estimatedAge}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Authentication & Provenance</h3>
-                                            <div className="space-y-6">
-                                                {/* Authentication Status */}
-                                                <div className="flex items-center gap-3">
-                                                    {(() => {
-                                                        const authStatus = getAuthStatusInfo(selectedArtifact.authenticationStatus);
-                                                        const StatusIcon = authStatus.icon;
-                                                        return (
-                                                            <>
-                                                                <StatusIcon className={`w-5 h-5 ${authStatus.color}`} />
-                                                                <div>
-                                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Status</span>
-                                                                    <p className={`${authStatus.color} font-medium`}>{authStatus.label}</p>
-                                                                </div>
-                                                            </>
-                                                        );
-                                                    })()}
+                            {/* Overlay with Basic Info */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent">
+                                <div className="absolute bottom-0 left-0 right-0 p-4">
+                                    {/* Status Badge */}
+                                    <div className="inline-block mb-2">
+                                        {(() => {
+                                            const authStatus = getAuthStatusInfo(selectedArtifact.authenticationStatus);
+                                            const StatusIcon = authStatus.icon;
+                                            return (
+                                                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${authStatus.bgColor} ${authStatus.color}`}>
+                                                    <StatusIcon size={12} />
+                                                    {authStatus.label}
                                                 </div>
-
-                                                {/* Authentication Details */}
-                                                {selectedArtifact.authentications && selectedArtifact.authentications.length > 0 && (
-                                                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Authentication Process</h4>
-                                                        {selectedArtifact.authentications.map((auth, index) => (
-                                                            <div key={index} className="space-y-2 text-sm">
-                                                                {auth.date && (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Calendar className="w-4 h-4 text-gray-400" />
-                                                                        <span className="text-gray-600 dark:text-gray-400">Date: {new Date(auth.date).toLocaleDateString()}</span>
-                                                                    </div>
-                                                                )}
-                                                                {auth.documentation && (
-                                                                    <div className="text-gray-700 dark:text-gray-300">
-                                                                        <span className="font-medium">Documentation:</span> {auth.documentation}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                {/* Provenance Details */}
-                                                {selectedArtifact.provenanceRecords && selectedArtifact.provenanceRecords.length > 0 && (
-                                                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Provenance History</h4>
-                                                        {selectedArtifact.provenanceRecords.map((provenance, index) => (
-                                                            <div key={index} className="space-y-2 text-sm">
-                                                                {provenance.acquisitionDate && (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Calendar className="w-4 h-4 text-gray-400" />
-                                                                        <span className="text-gray-600 dark:text-gray-400">Acquired: {new Date(provenance.acquisitionDate).toLocaleDateString()}</span>
-                                                                    </div>
-                                                                )}
-                                                                {provenance.acquisitionMethod && (
-                                                                    <div className="text-gray-700 dark:text-gray-300">
-                                                                        <span className="font-medium">Method:</span> {provenance.acquisitionMethod}
-                                                                    </div>
-                                                                )}
-                                                                {provenance.previousOwner && (
-                                                                    <div className="text-gray-700 dark:text-gray-300">
-                                                                        <span className="font-medium">Previous Owner:</span> {provenance.previousOwner}
-                                                                    </div>
-                                                                )}
-                                                                {provenance.provenanceNotes && (
-                                                                    <div className="text-gray-700 dark:text-gray-300">
-                                                                        <span className="font-medium">Notes:</span> {provenance.provenanceNotes}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
 
-                                    {/* Media Gallery */}
-                                    {selectedArtifact.media && selectedArtifact.media.length > 1 && (
-                                        <div>
-                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Additional Images</h3>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {selectedArtifact.media.slice(1).map((media, index) => (
-                                                    <div key={index} className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                        <LazyImage
-                                                            src={(() => {
-                                                                if (media.filePath) {
-                                                                    if (media.filePath.startsWith('http')) {
-                                                                        return media.filePath;
-                                                                    }
-                                                                    if (media.id) {
-                                                                        return `/api/media/download/${media.id}`;
-                                                                    }
-                                                                    if (media.filePath.startsWith('/')) {
-                                                                        return media.filePath;
-                                                                    }
-                                                                }
-                                                                return '/heritage_placeholder.jpg';
-                                                            })()}
-                                                            alt={`${getArtifactName(selectedArtifact)} image ${index + 2}`}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                    {/* Title */}
+                                    <h2 className="text-2xl font-bold text-white mb-1">
+                                        {getArtifactName(selectedArtifact)}
+                                    </h2>
+
+                                    {/* Category */}
+                                    {selectedArtifact.category && (
+                                        <span className="text-sm text-gray-300">
+                                            {selectedArtifact.category}
+                                        </span>
                                     )}
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Compact Content - Row Layout with Black & White */}
+                        <div className="p-4">
+                            {/* Row Layout for Main Sections */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Description Section */}
+                                {getArtifactDescription(selectedArtifact) && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 shadow-sm">
+                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                                            <Info className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                            Description
+                                        </h3>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                            {getArtifactDescription(selectedArtifact)}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Authentication Section */}
+                                {selectedArtifact.authentications && selectedArtifact.authentications.length > 0 && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 shadow-sm">
+                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                            <CheckCircle className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                            Authentication
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {selectedArtifact.authentications.map((auth, index) => (
+                                                <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-2 border border-gray-200 dark:border-gray-600">
+                                                    {auth.date && (
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Calendar className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                                                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                                                                {new Date(auth.date).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {auth.documentation && (
+                                                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                            {auth.documentation}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Provenance Section */}
+                                {selectedArtifact.provenanceRecords && selectedArtifact.provenanceRecords.length > 0 && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 shadow-sm">
+                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                            <Map className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                            Provenance
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {selectedArtifact.provenanceRecords.map((provenance, index) => (
+                                                <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded p-2 border border-gray-200 dark:border-gray-600">
+                                                    {provenance.eventDate && (
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Calendar className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                                                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                                                                {new Date(provenance.eventDate).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {provenance.previousOwner && (
+                                                        <div className="mb-1">
+                                                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Previous: </span>
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300">{provenance.previousOwner}</span>
+                                                        </div>
+                                                    )}
+                                                    {provenance.newOwner && (
+                                                        <div className="mb-1">
+                                                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Current: </span>
+                                                            <span className="text-xs text-gray-700 dark:text-gray-300">{provenance.newOwner}</span>
+                                                        </div>
+                                                    )}
+                                                    {provenance.history && (
+                                                        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-600 rounded border-l-2 border-gray-400 dark:border-gray-500">
+                                                            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                                {provenance.history}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Additional Media - Compact Grid */}
+                            {selectedArtifact.media && selectedArtifact.media.length > 1 && (
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Additional Images</h4>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {selectedArtifact.media.slice(1).map((media, index) => (
+                                            <div key={index} className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                                                <LazyImage
+                                                    src={(() => {
+                                                        if (media.filePath) {
+                                                            if (media.filePath.startsWith('http')) {
+                                                                return media.filePath;
+                                                            }
+                                                            if (media.id) {
+                                                                return `/api/media/download/${media.id}`;
+                                                            }
+                                                            if (media.filePath.startsWith('/')) {
+                                                                return media.filePath;
+                                                            }
+                                                        }
+                                                        return '/heritage_placeholder.jpg';
+                                                    })()}
+                                                    alt={`${getArtifactName(selectedArtifact)} image ${index + 2}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

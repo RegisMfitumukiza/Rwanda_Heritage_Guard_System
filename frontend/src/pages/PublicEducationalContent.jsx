@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useGet } from '../hooks/useSimpleApi';
+import QuizIndicator from '../components/ui/QuizIndicator';
 import {
     MobileCard,
     MobileCardContent,
@@ -225,7 +226,7 @@ const PublicEducationalContent = () => {
                             </span>
                         </div>
                         <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">
-                            Click on any article card to read the full content. Sign in to take quizzes and track your learning progress.
+                            Click on any article card to read the full content. Look for the green quiz indicators to test your knowledge!
                         </p>
                     </div>
                 </div>
@@ -298,6 +299,21 @@ const PublicEducationalContent = () => {
                                                     {article.difficultyLevel}
                                                 </Badge>
                                             </div>
+
+                                            {/* Quiz Indicator Badge */}
+                                            {article.quizId && (
+                                                <div className="flex items-center gap-2">
+                                                    <QuizIndicator
+                                                        hasQuiz={true}
+                                                        variant="badge"
+                                                        size="sm"
+                                                        showText={false}
+                                                    />
+                                                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                                        Quiz Available
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* External Resources */}
@@ -316,6 +332,15 @@ const PublicEducationalContent = () => {
                                                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
                                                     <Award className="w-4 h-4" />
                                                     <span>Quiz available to test your knowledge</span>
+                                                </div>
+                                                <div className="mt-2">
+                                                    <button
+                                                        onClick={() => handleTakeQuiz(article.id, article.quizId)}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                                                    >
+                                                        <Award className="w-4 h-4" />
+                                                        Take Quiz Now
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
@@ -340,7 +365,7 @@ const PublicEducationalContent = () => {
                             Ready to Test Your Knowledge?
                         </h2>
                         <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-                            Sign in to access quizzes, track your learning progress, and unlock the full
+                            Take quizzes to test what you've learned! Sign in to track your progress and unlock the full
                             educational experience of Rwanda's heritage.
                         </p>
                         <div className="flex gap-4 justify-center">
@@ -366,12 +391,25 @@ const PublicEducationalContent = () => {
                         <div className="p-6">
                             {/* Modal Header */}
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {selectedArticle.titleEn || `Article ${selectedArticle.id}`}
-                                </h2>
+                                <div className="flex-1">
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        {selectedArticle.titleEn || `Article ${selectedArticle.id}`}
+                                    </h2>
+                                    {/* Quiz Indicator - prominently displayed */}
+                                    {selectedArticle.quizId && (
+                                        <div className="mt-3">
+                                            <QuizIndicator
+                                                hasQuiz={true}
+                                                variant="button"
+                                                size="md"
+                                                onTakeQuiz={() => handleTakeQuiz(selectedArticle.id, selectedArticle.quizId)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={closeArticleModal}
-                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ml-4"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -407,6 +445,17 @@ const PublicEducationalContent = () => {
                                             {selectedArticle.difficultyLevel}
                                         </Badge>
                                     </div>
+                                    {/* Quiz Availability Badge */}
+                                    {selectedArticle.quizId && (
+                                        <div className="flex items-center gap-1">
+                                            <QuizIndicator
+                                                hasQuiz={true}
+                                                variant="badge"
+                                                size="sm"
+                                                showText={true}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Article Content */}
@@ -444,7 +493,12 @@ const PublicEducationalContent = () => {
                                 {selectedArticle.quizId && (
                                     <div className="border-t pt-6">
                                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                            <Award className="w-5 h-5 text-green-600" />
+                                            <QuizIndicator
+                                                hasQuiz={true}
+                                                variant="inline"
+                                                size="lg"
+                                                showText={false}
+                                            />
                                             Test Your Knowledge
                                         </h3>
                                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">

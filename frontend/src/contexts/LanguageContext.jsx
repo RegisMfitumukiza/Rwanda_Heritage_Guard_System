@@ -259,6 +259,45 @@ const translations = {
                     { code: 'fr', name: 'Français' }
                 ]
             }
+        },
+        // Report Builder translations
+        reportBuilder: {
+            title: 'Report Builder',
+            subtitle: 'Generate comprehensive system reports with custom filters',
+            generatePdfReport: 'Generate PDF Report',
+            generatingPdf: 'Generating PDF...',
+            generating: 'Generating...',
+            accessDenied: 'Access Denied',
+            accessDeniedMessage: 'Only system administrators can access this page.',
+            reportBuilder: 'Report Builder',
+            templates: 'Templates',
+            results: 'Results',
+            dateRange: 'Date Range',
+            startDate: 'Start Date',
+            endDate: 'End Date',
+            userRoles: 'User Roles',
+            siteStatuses: 'Site Statuses',
+            contentTypes: 'Content Types',
+            artifactAuthStatus: 'Artifact Authentication Status',
+            mediaTypes: 'Media Types',
+            noUserRoles: 'No user roles available',
+            noSiteStatuses: 'No site statuses available',
+            noContentTypes: 'No content types available',
+            noAuthStatuses: 'No authentication statuses available',
+            noMediaTypes: 'No media types available',
+            useTemplate: 'Use Template',
+            reportStatus: 'Report Status',
+            reportGeneratedSuccess: 'PDF Report Generated Successfully!',
+            reportDownloaded: 'Your report has been downloaded automatically',
+            checkDownloads: 'Check your downloads folder for the PDF file',
+            whatsInReport: 'What\'s in Your PDF Report',
+            reportFeatures: [
+                'Heritage logo and platform title',
+                'Report generation date and filters applied',
+                'Summary counts of all data categories',
+                'Detailed tables with all your data'
+            ],
+            generateReportToSee: 'Generate a report to see results here'
         }
     },
     fr: {
@@ -509,6 +548,45 @@ const translations = {
                     { code: 'fr', name: 'Français' }
                 ]
             }
+        },
+        // Report Builder translations
+        reportBuilder: {
+            title: 'Générateur de Rapports',
+            subtitle: 'Générer des rapports système complets avec des filtres personnalisés',
+            generatePdfReport: 'Générer un Rapport PDF',
+            generatingPdf: 'Génération du PDF...',
+            generating: 'Génération...',
+            accessDenied: 'Accès Refusé',
+            accessDeniedMessage: 'Seuls les administrateurs système peuvent accéder à cette page.',
+            reportBuilder: 'Générateur de Rapports',
+            templates: 'Modèles',
+            results: 'Résultats',
+            dateRange: 'Plage de Dates',
+            startDate: 'Date de Début',
+            endDate: 'Date de Fin',
+            userRoles: 'Rôles Utilisateur',
+            siteStatuses: 'Statuts de Site',
+            contentTypes: 'Types de Contenu',
+            artifactAuthStatus: 'Statut d\'Authentification d\'Artefact',
+            mediaTypes: 'Types de Média',
+            noUserRoles: 'Aucun rôle utilisateur disponible',
+            noSiteStatuses: 'Aucun statut de site disponible',
+            noContentTypes: 'Aucun type de contenu disponible',
+            noAuthStatuses: 'Aucun statut d\'authentification disponible',
+            noMediaTypes: 'Aucun type de média disponible',
+            useTemplate: 'Utiliser le Modèle',
+            reportStatus: 'Statut du Rapport',
+            reportGeneratedSuccess: 'Rapport PDF Généré avec Succès!',
+            reportDownloaded: 'Votre rapport a été téléchargé automatiquement',
+            checkDownloads: 'Vérifiez votre dossier de téléchargements pour le fichier PDF',
+            whatsInReport: 'Que Contient Votre Rapport PDF',
+            reportFeatures: [
+                'Logo du patrimoine et titre de la plateforme',
+                'Date de génération du rapport et filtres appliqués',
+                'Comptes récapitulatifs de toutes les catégories de données',
+                'Tableaux détaillés avec toutes vos données'
+            ],
+            generateReportToSee: 'Générez un rapport pour voir les résultats ici'
         }
     },
     rw: {
@@ -759,6 +837,45 @@ const translations = {
                     { code: 'fr', name: 'Français' }
                 ]
             }
+        },
+        // Report Builder translations
+        reportBuilder: {
+            title: 'Umubare w\'Ingingo',
+            subtitle: 'Kora umubare w\'umuryango wuzuye ufite ibihuzo byihariye',
+            generatePdfReport: 'Kora Umubare wa PDF',
+            generatingPdf: 'Kora PDF...',
+            generating: 'Kora...',
+            accessDenied: 'Ntibyemewe',
+            accessDeniedMessage: 'Abakora umuryango gusa ni bo bashobora kujya kuri iyi urubuga.',
+            reportBuilder: 'Umubare w\'Ingingo',
+            templates: 'Ibihuzo',
+            results: 'Ibisubizo',
+            dateRange: 'Urukurikirane rw\'Itariki',
+            startDate: 'Itariki yo Gutangira',
+            endDate: 'Itariki yo Kurangira',
+            userRoles: 'Ibikorwa by\'Umukoresha',
+            siteStatuses: 'Imimerere y\'Ahantu',
+            contentTypes: 'Ubwoko bw\'Ibikubiyemo',
+            artifactAuthStatus: 'Imimerere yo Kwemeza Ibintu by\'Umuco',
+            mediaTypes: 'Ubwoko bw\'Itangazamakuru',
+            noUserRoles: 'Nta bikorwa by\'umukoresha bihagaze',
+            noSiteStatuses: 'Nta mimerere y\'ahantu ihagaze',
+            noContentTypes: 'Nta bwoko bw\'ibikubiyemo buhagaze',
+            noAuthStatuses: 'Nta mimerere yo kwemeza ihagaze',
+            noMediaTypes: 'Nta bwoko bw\'itangazamakuru buhagaze',
+            useTemplate: 'Koresha Ibihuzo',
+            reportStatus: 'Imimerere y\'Umubare',
+            reportGeneratedSuccess: 'Umubare wa PDF Wakozwe neza!',
+            reportDownloaded: 'Umubare wawe wakujyana mu buryo bwa nyuma',
+            checkDownloads: 'Reba mu buryo bwa nyuma kugira ngo ubone fayilo ya PDF',
+            whatsInReport: 'Iki Kiri mu Mubare wawe wa PDF',
+            reportFeatures: [
+                'Ikimenyetso cy\'umurage n\'umutekano w\'urubuga',
+                'Itariki yo gucapa umubare n\'ibihuzo byakoreshejwe',
+                'Umubare w\'ibintu byose by\'uburyo',
+                'Imbonerahamwe zuzuye n\'amakuru yawe yose'
+            ],
+            generateReportToSee: 'Kora umubare kugira ngo ubone ibisubizo hano'
         }
     }
 };

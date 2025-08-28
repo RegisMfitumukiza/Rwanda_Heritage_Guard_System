@@ -2,7 +2,9 @@ package com.rwandaheritage.heritageguard.controller;
 
 import com.rwandaheritage.heritageguard.dto.SiteMediaDTO;
 import com.rwandaheritage.heritageguard.model.SiteMedia;
+import com.rwandaheritage.heritageguard.model.ArtifactMedia;
 import com.rwandaheritage.heritageguard.service.SiteMediaService;
+import com.rwandaheritage.heritageguard.service.ArtifactMediaService;
 import com.rwandaheritage.heritageguard.mapper.SiteMediaMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,10 +28,12 @@ import org.springframework.http.HttpStatus;
 @RequestMapping("/api/media")
 public class SiteMediaController {
     private final SiteMediaService siteMediaService;
+    private final ArtifactMediaService artifactMediaService;
 
     @Autowired
-    public SiteMediaController(SiteMediaService siteMediaService) {
+    public SiteMediaController(SiteMediaService siteMediaService, ArtifactMediaService artifactMediaService) {
         this.siteMediaService = siteMediaService;
+        this.artifactMediaService = artifactMediaService;
     }
 
     // Public and authenticated users can view
@@ -77,42 +81,62 @@ public class SiteMediaController {
         // Add debugging
         System.out.println("Media download requested for ID: " + id);
         
-        Resource fileResource = siteMediaService.loadMediaFile(id);
-        if (fileResource == null) {
-            System.out.println("File resource is null for media ID: " + id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found or access denied");
-        }
-        if (!fileResource.exists()) {
-            System.out.println("File does not exist on disk for media ID: " + id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found on disk");
-        }
-        
-        // Try to get original filename from DB
-        Optional<SiteMedia> mediaOpt = siteMediaService.getSiteMediaById(id);
-        if (mediaOpt.isEmpty()) {
-            System.out.println("Media not found in database for ID: " + id);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media not found");
+        // First try to find SiteMedia
+        Optional<SiteMedia> siteMediaOpt = siteMediaService.getSiteMediaById(id);
+        if (siteMediaOpt.isPresent()) {
+            SiteMedia media = siteMediaOpt.get();
+            System.out.println("SiteMedia found: " + media.getFileName() + ", isPublic: " + media.isPublic() + ", fileType: " + media.getFileType());
+            
+            Resource fileResource = siteMediaService.loadMediaFile(id);
+            if (fileResource == null || !fileResource.exists()) {
+                System.out.println("File resource is null or doesn't exist for site media ID: " + id);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found or access denied");
+            }
+            
+            return buildMediaResponse(media.getFileName(), media.getFileType(), fileResource);
         }
         
-        SiteMedia media = mediaOpt.get();
-        System.out.println("Media found: " + media.getFileName() + ", isPublic: " + media.isPublic() + ", fileType: " + media.getFileType());
+        // If not found in SiteMedia, try ArtifactMedia
+        Optional<ArtifactMedia> artifactMediaOpt = artifactMediaService.getMedia(id);
+        if (artifactMediaOpt.isPresent()) {
+            ArtifactMedia media = artifactMediaOpt.get();
+            System.out.println("ArtifactMedia found: " + media.getFilePath() + ", isPublic: " + media.getIsPublic());
+            
+            Resource fileResource = artifactMediaService.loadMediaFile(id);
+            if (fileResource == null || !fileResource.exists()) {
+                System.out.println("File resource is null or doesn't exist for artifact media ID: " + id);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found or access denied");
+            }
+            
+            // Extract filename from filePath
+            String fileName = media.getFilePath() != null ? media.getFilePath().substring(media.getFilePath().lastIndexOf('\\') + 1) : "artifact_media";
+            String fileType = determineFileType(fileName);
+            
+            return buildMediaResponse(fileName, fileType, fileResource);
+        }
         
-        String fileName = media.getFileName();
+        // If neither found, return 404
+        System.out.println("Media not found in either SiteMedia or ArtifactMedia for ID: " + id);
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media not found");
+    }
+    
+    // Helper method to build media response
+    private ResponseEntity<?> buildMediaResponse(String fileName, String fileType, Resource fileResource) {
         String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
         
         // Determine content type based on file type
         String contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-        if (media.getFileType() != null && media.getFileType().startsWith("image/")) {
-            contentType = media.getFileType();
-        } else if (media.getFileType() != null && media.getFileType().startsWith("video/")) {
-            contentType = media.getFileType();
+        if (fileType != null && fileType.startsWith("image/")) {
+            contentType = fileType;
+        } else if (fileType != null && fileType.startsWith("video/")) {
+            contentType = fileType;
         }
         
         // For images and videos, use inline display; for documents, use attachment
         String contentDisposition = "inline";
-        if (media.getFileType() != null && 
-            (media.getFileType().startsWith("application/") || 
-             media.getFileType().startsWith("text/"))) {
+        if (fileType != null && 
+            (fileType.startsWith("application/") || 
+             fileType.startsWith("text/"))) {
             contentDisposition = "attachment; filename=\"" + encodedFileName + "\"";
         }
         
@@ -122,6 +146,32 @@ public class SiteMediaController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .contentType(MediaType.parseMediaType(contentType))
                 .body(fileResource);
+    }
+    
+    // Helper method to determine file type from filename
+    private String determineFileType(String fileName) {
+        if (fileName == null) return null;
+        
+        String extension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+        switch (extension) {
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "png":
+                return "image/png";
+            case "gif":
+                return "image/gif";
+            case "webp":
+                return "image/webp";
+            case "mp4":
+                return "video/mp4";
+            case "avi":
+                return "video/x-msvideo";
+            case "mov":
+                return "video/quicktime";
+            default:
+                return "application/octet-stream";
+        }
     }
 
     // Only ADMIN, HERITAGE_MANAGER, CONTENT_MANAGER can create

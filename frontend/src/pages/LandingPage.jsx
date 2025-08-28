@@ -10,7 +10,6 @@ import HeroSection from '../components/landing/HeroSection';
 import FeaturedSitesSection from '../components/landing/FeaturedSitesSection';
 import HeritageSitesSection from '../components/landing/HeritageSitesSection';
 import EducationalSection from '../components/landing/EducationalSection';
-import ArtifactSection from '../components/landing/ArtifactSection';
 import CommunitySection from '../components/landing/CommunitySection';
 import ComponentErrorBoundary from '../components/error/ComponentErrorBoundary';
 import PrivacyBanner from '../components/ui/PrivacyBanner';
@@ -351,14 +350,6 @@ const LandingPage = () => {
         <section id="education">
           <ComponentErrorBoundary componentName="Educational Section">
             <EducationalSection />
-          </ComponentErrorBoundary>
-        </section>
-
-        <section id="artifacts">
-          <ComponentErrorBoundary componentName="Artifacts Section">
-            <ArtifactSection
-              onCTAClick={() => navigate('/artifacts')}
-            />
           </ComponentErrorBoundary>
         </section>
 

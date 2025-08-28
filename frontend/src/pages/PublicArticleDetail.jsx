@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { useGet } from '../hooks/useSimpleApi';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import QuizIndicator from '../components/ui/QuizIndicator';
 
 const PublicArticleDetail = () => {
     const { id } = useParams();

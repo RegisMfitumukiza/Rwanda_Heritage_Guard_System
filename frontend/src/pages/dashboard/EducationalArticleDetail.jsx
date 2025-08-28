@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 import ComponentErrorBoundary from '../../components/error/ComponentErrorBoundary';
+import QuizIndicator from '../../components/ui/QuizIndicator';
 import {
     MobileCard,
     MobileCardHeader,
@@ -121,8 +122,8 @@ const EducationalArticleDetail = () => {
             <div className="space-y-6">
                 {/* Header with back button */}
                 <div className="flex items-center justify-between">
-                    {/* Take Quiz button - prominently displayed for Community Members */}
-                    {user?.role === 'COMMUNITY_MEMBER' && quiz && (
+                    {/* Take Quiz button - now available to all users */}
+                    {quiz && (
                         <MobileButton
                             onClick={handleTakeQuiz}
                             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-lg font-semibold"
@@ -178,6 +179,18 @@ const EducationalArticleDetail = () => {
                                             <Globe className="w-4 h-4" />
                                             <span>{article.isPublic ? 'Public' : 'Private'}</span>
                                         </div>
+
+                                        {/* Quiz Indicator */}
+                                        {article.quizId && (
+                                            <div className="flex items-center gap-1">
+                                                <QuizIndicator
+                                                    hasQuiz={true}
+                                                    variant="inline"
+                                                    size="sm"
+                                                    showText={true}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -240,7 +253,12 @@ const EducationalArticleDetail = () => {
                         {quiz && (
                             <div className="border-t pt-6">
                                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                    <BookOpen className="w-5 h-5 text-green-600" />
+                                    <QuizIndicator
+                                        hasQuiz={true}
+                                        variant="inline"
+                                        size="lg"
+                                        showText={false}
+                                    />
                                     Test Your Knowledge
                                 </h3>
                                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
@@ -253,15 +271,14 @@ const EducationalArticleDetail = () => {
                                         <span>Passing Score: {quiz.passingScorePercentage || 70}%</span>
                                     </div>
 
-                                    {user?.role === 'COMMUNITY_MEMBER' && (
-                                        <MobileButton
-                                            onClick={handleTakeQuiz}
-                                            className="mt-3 bg-green-600 hover:bg-green-700 text-white"
-                                        >
-                                            <Award className="w-4 h-4 mr-2" />
-                                            Start Quiz
-                                        </MobileButton>
-                                    )}
+                                    {/* Quiz button now available to all users */}
+                                    <MobileButton
+                                        onClick={handleTakeQuiz}
+                                        className="mt-3 bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                        <Award className="w-4 h-4 mr-2" />
+                                        Start Quiz
+                                    </MobileButton>
                                 </div>
                             </div>
                         )}

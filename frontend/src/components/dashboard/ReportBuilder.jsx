@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, Badge, Tabs, TabsContent, TabsList, TabsTrigger } from '../ui';
@@ -9,7 +9,7 @@ import { useGet, usePost } from '../../hooks/useSimpleApi';
 import reportsApi from '../../services/api/reportsApi';
 
 const ReportBuilder = () => {
-    const { t } = useTranslation();
+    const { t } = useLanguage();
     const { user } = useAuth();
 
     // State for report filters
@@ -40,6 +40,18 @@ const ReportBuilder = () => {
         loading: templatesLoading,
         error: templatesError
     } = useGet('/api/admin/reports/templates');
+
+    // Debug: Log what we're getting from the API
+    useEffect(() => {
+        if (reportTemplates) {
+            console.log('🔍 Report templates from API:', reportTemplates);
+            console.log('🔍 Type:', typeof reportTemplates);
+            console.log('🔍 Is Array:', Array.isArray(reportTemplates));
+            if (Array.isArray(reportTemplates)) {
+                console.log('🔍 Length:', reportTemplates.length);
+            }
+        }
+    }, [reportTemplates]);
 
     // Initialize filters when availableFilters data loads
     useEffect(() => {
@@ -428,29 +440,54 @@ const ReportBuilder = () => {
 
                 {/* Templates Tab */}
                 <TabsContent value="templates" className="space-y-6 mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {reportTemplates?.map((template) => (
-                            <Card key={template.id} className="hover:shadow-md transition-shadow">
-                                <CardHeader>
-                                    <CardTitle className="text-lg">{template.name}</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        {template.description}
-                                    </p>
-                                    <Button
-                                        onClick={() => generateFromTemplate(template.id)}
-                                        disabled={isGenerating}
-                                        className="w-full"
-                                        variant="outline"
-                                    >
-                                        <FileText className="w-4 h-4 mr-2" />
-                                        {isGenerating ? t('Generating...') : t('Use Template')}
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                    {templatesLoading ? (
+                        <Card>
+                            <CardContent className="p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                                <p className="text-gray-600 dark:text-gray-400">Loading templates...</p>
+                            </CardContent>
+                        </Card>
+                    ) : templatesError ? (
+                        <Card>
+                            <CardContent className="p-8 text-center">
+                                <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+                                <p className="text-red-600 dark:text-red-400">Failed to load templates. Please refresh the page.</p>
+                            </CardContent>
+                        </Card>
+                    ) : Array.isArray(reportTemplates) && reportTemplates.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {reportTemplates.map((template) => (
+                                <Card key={template.id} className="hover:shadow-md transition-shadow">
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            {template.description}
+                                        </p>
+                                        <Button
+                                            onClick={() => generateFromTemplate(template.id)}
+                                            disabled={isGenerating}
+                                            className="w-full"
+                                            variant="outline"
+                                        >
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            {isGenerating ? t('Generating...') : t('Use Template')}
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <Card>
+                            <CardContent className="p-8 text-center">
+                                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    No templates available
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
 
                 {/* Results Tab */}

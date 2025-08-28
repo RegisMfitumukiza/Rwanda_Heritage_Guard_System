@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 import ComponentErrorBoundary from '../../components/error/ComponentErrorBoundary';
+import QuizIndicator from '../../components/ui/QuizIndicator';
 import {
     MobileCard,
     MobileCardHeader,
@@ -22,6 +23,7 @@ import { useGet } from '../../hooks/useSimpleApi';
 import { deleteArticle as deleteArticleApi } from '../../services/api/educationApi';
 import { toast } from 'react-hot-toast';
 import {
+    Award,
     BookOpen,
     Plus,
     Search,
@@ -170,6 +172,21 @@ const EducationalArticles = () => {
                 </span>
             </div>
         )),
+        createColumn('quizId', 'Quiz', (value, row) => (
+            <div className="flex items-center gap-2">
+                <QuizIndicator
+                    hasQuiz={!!value}
+                    variant="badge"
+                    size="sm"
+                    showText={false}
+                />
+                {value && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Available
+                    </span>
+                )}
+            </div>
+        )),
         createColumn('createdDate', 'Created', (value) => (
             <span className="text-sm text-gray-600 dark:text-gray-400">
                 {new Date(value).toLocaleDateString()}
@@ -189,15 +206,16 @@ const EducationalArticles = () => {
                     <Eye className="w-4 h-4" />
                 </MobileButton>
 
-                {/* Take Quiz button for Community Members */}
-                {user?.role === 'COMMUNITY_MEMBER' && row.quizId && (
+                {/* Take Quiz button - now available to all users */}
+                {row.quizId && (
                     <MobileButton
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/dashboard/learning/quiz/${row.quizId}`)}
                         className="text-green-600 hover:text-green-700"
                     >
-                        <BookOpen className="w-4 h-4" />
+                        <Award className="w-4 h-4" />
+                        <span className="hidden sm:inline">Quiz</span>
                     </MobileButton>
                 )}
 
